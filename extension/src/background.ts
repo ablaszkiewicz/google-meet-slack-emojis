@@ -1,18 +1,15 @@
-import {
-  startOAuthFlow,
-  getAuthState,
-  clearAuthState,
-  getEmojis,
-} from "./slack/auth";
-import { SlackMessage } from "./slack/types";
+import { startOAuthFlow } from "./slack/auth";
+import { Message } from "./slack/types";
+import { Storage } from "./storage";
+import { BackendApiFacade } from "./api/backendApiFacade";
 
 console.log("[Background] Service worker starting...");
 
 chrome.runtime.onMessage.addListener(
   (
-    message: SlackMessage,
+    message: Message,
     _sender: chrome.runtime.MessageSender,
-    sendResponse: (response: SlackMessage) => void
+    sendResponse: (response: Message) => void
   ) => {
     console.log("[Background] Received message:", message);
 
@@ -39,7 +36,7 @@ chrome.runtime.onMessage.addListener(
   }
 );
 
-async function handleLogin(sendResponse: (response: SlackMessage) => void) {
+async function handleLogin(sendResponse: (response: Message) => void) {
   try {
     console.log("[Background] Starting OAuth flow...");
     const authState = await startOAuthFlow();
@@ -58,9 +55,9 @@ async function handleLogin(sendResponse: (response: SlackMessage) => void) {
   }
 }
 
-async function handleLogout(sendResponse: (response: SlackMessage) => void) {
+async function handleLogout(sendResponse: (response: Message) => void) {
   try {
-    await clearAuthState();
+    await Storage.clearAuthState();
     sendResponse({
       type: "SLACK_AUTH_STATE",
       payload: {
@@ -78,11 +75,9 @@ async function handleLogout(sendResponse: (response: SlackMessage) => void) {
   }
 }
 
-async function handleGetAuthState(
-  sendResponse: (response: SlackMessage) => void
-) {
+async function handleGetAuthState(sendResponse: (response: Message) => void) {
   try {
-    const authState = await getAuthState();
+    const authState = await Storage.getAuthState();
     sendResponse({
       type: "SLACK_AUTH_STATE",
       payload: authState,
@@ -96,10 +91,10 @@ async function handleGetAuthState(
   }
 }
 
-async function handleGetEmojis(sendResponse: (response: SlackMessage) => void) {
+async function handleGetEmojis(sendResponse: (response: Message) => void) {
   try {
     console.log("[Background] Fetching emojis...");
-    const emojiList = await getEmojis();
+    const emojiList = await BackendApiFacade.getEmojis();
     console.log(`[Background] Fetched ${emojiList.length} emojis`);
 
     sendResponse({

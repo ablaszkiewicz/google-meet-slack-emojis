@@ -1,5 +1,7 @@
-import { BACKEND_CONFIG, SLACK_CONFIG, STORAGE_KEYS } from "./config";
-import { AuthState, BackendUser, SlackEmoji } from "./types";
+import { SLACK_CONFIG } from "./config";
+import { BackendApiFacade } from "../api/backendApiFacade";
+import { Storage } from "../storage";
+import { AuthState } from "./types";
 
 export function getAuthUrl(redirectUri: string): string {
   const params = new URLSearchParams({
@@ -10,63 +12,6 @@ export function getAuthUrl(redirectUri: string): string {
   });
 
   return `${SLACK_CONFIG.AUTH_URL}?${params.toString()}`;
-}
-
-export async function saveAuthState(state: AuthState): Promise<void> {
-  return new Promise((resolve) => {
-    chrome.storage.sync.set(
-      {
-        [STORAGE_KEYS.BACKEND_JWT]: state.token,
-        [STORAGE_KEYS.BACKEND_USER]: state.user,
-      },
-      resolve
-    );
-  });
-}
-
-export async function getAuthState(): Promise<AuthState> {
-  return new Promise((resolve) => {
-    chrome.storage.sync.get(
-      [STORAGE_KEYS.BACKEND_JWT, STORAGE_KEYS.BACKEND_USER],
-      (items) => {
-        const token = (items[STORAGE_KEYS.BACKEND_JWT] as string) || null;
-        const user = (items[STORAGE_KEYS.BACKEND_USER] as BackendUser) || null;
-        resolve({
-          isAuthenticated: !!token,
-          token,
-          user,
-        });
-      }
-    );
-  });
-}
-
-export async function clearAuthState(): Promise<void> {
-  return new Promise((resolve) => {
-    chrome.storage.sync.remove(
-      [STORAGE_KEYS.BACKEND_JWT, STORAGE_KEYS.BACKEND_USER],
-      resolve
-    );
-  });
-}
-
-export async function getEmojis(): Promise<SlackEmoji[]> {
-  const state = await getAuthState();
-
-  if (!state.token) {
-    throw new Error("Not authenticated");
-  }
-
-  const response = await fetch(`${BACKEND_CONFIG.BASE_URL}/slack/emojis`, {
-    method: "GET",
-    headers: { Authorization: `Bearer ${state.token}` },
-  });
-
-  if (!response.ok) {
-    throw new Error("Failed to fetch emojis");
-  }
-
-  return response.json();
 }
 
 export async function startOAuthFlow(): Promise<AuthState> {
@@ -97,36 +42,11 @@ export async function startOAuthFlow(): Promise<AuthState> {
             return;
           }
 
-          const exchangeResponse = await fetch(
-            `${BACKEND_CONFIG.BASE_URL}/auth/slack/exchange-code`,
-            {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ code, redirectUri }),
-            }
-          );
-
-          if (!exchangeResponse.ok) {
-            reject(new Error("Slack login failed"));
-            return;
-          }
-
-          const data = (await exchangeResponse.json()) as { token: string };
-
-          const meResponse = await fetch(
-            `${BACKEND_CONFIG.BASE_URL}/users/me`,
-            {
-              method: "GET",
-              headers: { Authorization: `Bearer ${data.token}` },
-            }
-          );
-
-          if (!meResponse.ok) {
-            reject(new Error("Failed to load user"));
-            return;
-          }
-
-          const user = (await meResponse.json()) as BackendUser;
+          const data = await BackendApiFacade.exchangeSlackCode({
+            code,
+            redirectUri,
+          });
+          const user = await BackendApiFacade.getCurrentUser(data.token);
 
           const authState: AuthState = {
             isAuthenticated: true,
@@ -134,7 +54,7 @@ export async function startOAuthFlow(): Promise<AuthState> {
             user,
           };
 
-          await saveAuthState(authState);
+          await Storage.setAuthState(authState);
           resolve(authState);
         } catch (error) {
           reject(error);

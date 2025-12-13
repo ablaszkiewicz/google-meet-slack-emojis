@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
-import { AuthState, SlackEmoji, SlackMessage } from "./slack/types";
+import { AuthState, Message } from "./slack/types";
+import type { SlackEmojiDto } from "./api/backendApiFacade";
 
 const styles = {
   container: {
@@ -369,7 +370,7 @@ const Popup = () => {
   const [error, setError] = useState<string | null>(null);
   const [buttonHover, setButtonHover] = useState(false);
 
-  const [emojis, setEmojis] = useState<SlackEmoji[]>([]);
+  const [emojis, setEmojis] = useState<SlackEmojiDto[]>([]);
   const [isLoadingEmojis, setIsLoadingEmojis] = useState(false);
   const [emojiSearch, setEmojiSearch] = useState("");
   const [hoveredEmoji, setHoveredEmoji] = useState<string | null>(null);
@@ -377,7 +378,7 @@ const Popup = () => {
   useEffect(() => {
     chrome.runtime.sendMessage(
       { type: "SLACK_GET_AUTH_STATE" },
-      (response: SlackMessage) => {
+      (response: Message) => {
         setIsLoading(false);
         if (response?.type === "SLACK_AUTH_STATE") {
           setAuthState(response.payload);
@@ -398,7 +399,7 @@ const Popup = () => {
     setIsLoadingEmojis(true);
     chrome.runtime.sendMessage(
       { type: "SLACK_GET_EMOJIS" },
-      (response: SlackMessage) => {
+      (response: Message) => {
         try {
           if (response?.type === "SLACK_EMOJIS_SUCCESS") {
             setEmojis(response.payload);
@@ -422,7 +423,7 @@ const Popup = () => {
 
     chrome.runtime.sendMessage(
       { type: "SLACK_LOGIN" },
-      (response: SlackMessage) => {
+      (response: Message) => {
         setIsLoggingIn(false);
 
         if (response?.type === "SLACK_AUTH_SUCCESS") {
@@ -437,7 +438,7 @@ const Popup = () => {
   const handleLogout = () => {
     chrome.runtime.sendMessage(
       { type: "SLACK_LOGOUT" },
-      (response: SlackMessage) => {
+      (response: Message) => {
         if (response?.type === "SLACK_AUTH_STATE") {
           setAuthState(response.payload);
           setEmojis([]);
@@ -446,7 +447,7 @@ const Popup = () => {
     );
   };
 
-  const handleEmojiClick = (emoji: SlackEmoji) => {
+  const handleEmojiClick = (emoji: SlackEmojiDto) => {
     console.log("Clicked emoji:", emoji.name);
   };
 

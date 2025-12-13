@@ -1,28 +1,12 @@
-export interface BackendUser {
-  id: string;
-  email?: string;
-  authMethod: string;
-  slackTeamName?: string;
-  name?: string;
-  avatar?: string;
-  slackTeamId?: string;
-  slackUserId?: string;
-}
+import type { BackendUserDto, SlackEmojiDto } from "../api/backendApiFacade";
 
 export interface AuthState {
   isAuthenticated: boolean;
   token: string | null;
-  user: BackendUser | null;
+  user: BackendUserDto | null;
 }
 
-export interface SlackEmoji {
-  name: string;
-  url: string;
-  isAlias: boolean;
-  aliasFor?: string;
-}
-
-export type SlackMessage =
+export type Message =
   | { type: "SLACK_LOGIN" }
   | { type: "SLACK_LOGOUT" }
   | { type: "SLACK_GET_AUTH_STATE" }
@@ -30,5 +14,5 @@ export type SlackMessage =
   | { type: "SLACK_AUTH_SUCCESS"; payload: AuthState }
   | { type: "SLACK_AUTH_ERROR"; payload: string }
   | { type: "SLACK_AUTH_STATE"; payload: AuthState }
-  | { type: "SLACK_EMOJIS_SUCCESS"; payload: SlackEmoji[] }
+  | { type: "SLACK_EMOJIS_SUCCESS"; payload: SlackEmojiDto[] }
   | { type: "SLACK_EMOJIS_ERROR"; payload: string };
