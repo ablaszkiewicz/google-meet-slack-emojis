@@ -2,37 +2,12 @@ import {
   startOAuthFlow,
   getAuthState,
   clearAuthState,
-  getBotToken,
-  getWorkspaceEmojis,
+  getEmojis,
 } from "./slack/auth";
+import { SlackMessage } from "./slack/types";
 
 console.log("[Background] Service worker starting...");
 
-// Define message types inline
-type SlackAuthPayload = {
-  isAuthenticated: boolean;
-  user: unknown;
-  team: unknown;
-  accessToken: string | null;
-};
-
-type SlackEmoji = {
-  name: string;
-  url: string;
-};
-
-type SlackMessage =
-  | { type: "SLACK_LOGIN" }
-  | { type: "SLACK_LOGOUT" }
-  | { type: "SLACK_GET_AUTH_STATE" }
-  | { type: "SLACK_GET_EMOJIS" }
-  | { type: "SLACK_AUTH_SUCCESS"; payload: SlackAuthPayload }
-  | { type: "SLACK_AUTH_ERROR"; payload: string }
-  | { type: "SLACK_AUTH_STATE"; payload: SlackAuthPayload }
-  | { type: "SLACK_EMOJIS_SUCCESS"; payload: SlackEmoji[] }
-  | { type: "SLACK_EMOJIS_ERROR"; payload: string };
-
-// Handle messages from popup and content script
 chrome.runtime.onMessage.addListener(
   (
     message: SlackMessage,
@@ -44,7 +19,7 @@ chrome.runtime.onMessage.addListener(
     switch (message.type) {
       case "SLACK_LOGIN":
         handleLogin(sendResponse);
-        return true; // Keep the message channel open for async response
+        return true;
 
       case "SLACK_LOGOUT":
         handleLogout(sendResponse);
@@ -90,9 +65,8 @@ async function handleLogout(sendResponse: (response: SlackMessage) => void) {
       type: "SLACK_AUTH_STATE",
       payload: {
         isAuthenticated: false,
+        token: null,
         user: null,
-        team: null,
-        accessToken: null,
       },
     });
   } catch (error) {
@@ -125,17 +99,7 @@ async function handleGetAuthState(
 async function handleGetEmojis(sendResponse: (response: SlackMessage) => void) {
   try {
     console.log("[Background] Fetching emojis...");
-    const botToken = await getBotToken();
-
-    if (!botToken) {
-      sendResponse({
-        type: "SLACK_EMOJIS_ERROR",
-        payload: "No bot token. Please login via extension popup.",
-      });
-      return;
-    }
-
-    const emojiList = await getWorkspaceEmojis(botToken);
+    const emojiList = await getEmojis();
     console.log(`[Background] Fetched ${emojiList.length} emojis`);
 
     sendResponse({

@@ -5,4 +5,9 @@ export interface IUser {
   email?: string;
   passwordHash?: string;
   authMethod: AuthMethod;
+  slackUserId?: string;
+  slackTeamId?: string;
+  slackTeamName?: string;
+  slackUserName?: string;
+  slackUserAvatar?: string;
 }

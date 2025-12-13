@@ -19,6 +19,24 @@ export class UserEntity {
   @Prop({ type: Date })
   lastActivityDate: string;
 
+  @Prop()
+  slackUserId?: string;
+
+  @Prop()
+  slackTeamId?: string;
+
+  @Prop()
+  slackTeamName?: string;
+
+  @Prop()
+  slackUserName?: string;
+
+  @Prop()
+  slackUserAvatar?: string;
+
+  @Prop({ select: false })
+  slackBotToken?: string;
+
   public static mapToInterface(user: UserEntity): IUser {
     return {
       ...user,
@@ -30,3 +48,8 @@ export class UserEntity {
 export type UserDocument = HydratedDocument<UserEntity>;
 
 export const UserSchema = SchemaFactory.createForClass(UserEntity);
+
+UserSchema.index(
+  { slackTeamId: 1, slackUserId: 1 },
+  { unique: true, sparse: true },
+);

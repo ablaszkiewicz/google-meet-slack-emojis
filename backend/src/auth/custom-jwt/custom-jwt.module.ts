@@ -1,13 +1,17 @@
-import { Module } from '@nestjs/common';
-import { JwtModule } from '@nestjs/jwt';
-import { CustomJwtService } from './custom-jwt.service';
+import { Module } from "@nestjs/common";
+import { JwtModule } from "@nestjs/jwt";
+import { CustomJwtService } from "./custom-jwt.service";
+
+function getJwtSecret(): string {
+  return process.env.JWT_SECRET ?? "dev-jwt-secret-change-me";
+}
 
 @Module({
   imports: [
     JwtModule.register({
       global: true,
-      secret: 'todo-change-this',
-      signOptions: { expiresIn: '1d' },
+      secret: getJwtSecret(),
+      signOptions: { expiresIn: "1d" },
     }),
   ],
   providers: [CustomJwtService],

@@ -1,64 +1,34 @@
-export interface SlackUser {
+export interface BackendUser {
   id: string;
-  name: string;
-  email: string;
-  image_24?: string;
-  image_32?: string;
-  image_48?: string;
-  image_72?: string;
-  image_192?: string;
-  image_512?: string;
+  email?: string;
+  authMethod: string;
+  slackTeamName?: string;
+  slackUserName?: string;
+  slackUserAvatar?: string;
+  slackTeamId?: string;
+  slackUserId?: string;
 }
 
-export interface SlackTeam {
-  id: string;
-  name: string;
-  image_34?: string;
-  image_44?: string;
-  image_68?: string;
-  image_88?: string;
-  image_102?: string;
-  image_132?: string;
-  image_230?: string;
-}
-
-export interface SlackAuthState {
+export interface AuthState {
   isAuthenticated: boolean;
-  user: SlackUser | null;
-  team: SlackTeam | null;
-  accessToken: string | null;
+  token: string | null;
+  user: BackendUser | null;
 }
 
-export interface SlackOAuthResponse {
-  ok: boolean;
-  access_token?: string;
-  token_type?: string;
-  scope?: string;
-  authed_user?: {
-    id: string;
-    scope: string;
-    access_token: string;
-    token_type: string;
-  };
-  team?: {
-    id: string;
-    name: string;
-  };
-  error?: string;
+export interface SlackEmoji {
+  name: string;
+  url: string;
+  isAlias: boolean;
+  aliasFor?: string;
 }
 
-export interface SlackIdentityResponse {
-  ok: boolean;
-  user?: SlackUser;
-  team?: SlackTeam;
-  error?: string;
-}
-
-// Message types for communication between popup and background script
 export type SlackMessage =
   | { type: "SLACK_LOGIN" }
   | { type: "SLACK_LOGOUT" }
   | { type: "SLACK_GET_AUTH_STATE" }
-  | { type: "SLACK_AUTH_SUCCESS"; payload: SlackAuthState }
+  | { type: "SLACK_GET_EMOJIS" }
+  | { type: "SLACK_AUTH_SUCCESS"; payload: AuthState }
   | { type: "SLACK_AUTH_ERROR"; payload: string }
-  | { type: "SLACK_AUTH_STATE"; payload: SlackAuthState };
+  | { type: "SLACK_AUTH_STATE"; payload: AuthState }
+  | { type: "SLACK_EMOJIS_SUCCESS"; payload: SlackEmoji[] }
+  | { type: "SLACK_EMOJIS_ERROR"; payload: string };

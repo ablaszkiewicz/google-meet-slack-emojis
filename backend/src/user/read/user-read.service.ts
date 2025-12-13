@@ -1,20 +1,25 @@
-import { Injectable } from '@nestjs/common';
-import { IUser } from '../core/entities/user.interface';
-import { InjectModel } from '@nestjs/mongoose';
-import { UserEntity } from '../core/entities/user.entity';
-import { Model } from 'mongoose';
+import { Injectable } from "@nestjs/common";
+import { IUser } from "../core/entities/user.interface";
+import { InjectModel } from "@nestjs/mongoose";
+import { UserEntity } from "../core/entities/user.entity";
+import { Model } from "mongoose";
+
+export type UserWithSlackBotToken = {
+  user: IUser;
+  slackBotToken: string;
+};
 
 @Injectable()
 export class UserReadService {
   constructor(
-    @InjectModel(UserEntity.name) private userModel: Model<UserEntity>,
+    @InjectModel(UserEntity.name) private userModel: Model<UserEntity>
   ) {}
 
   public async readById(id: string): Promise<IUser> {
     const user = await this.userModel.findById(id).lean<UserEntity>().exec();
 
     if (!user) {
-      throw new Error('User not found');
+      throw new Error("User not found");
     }
 
     return UserEntity.mapToInterface(user);
@@ -27,9 +32,32 @@ export class UserReadService {
       .exec();
 
     if (!user) {
-      throw new Error('User not found');
+      throw new Error("User not found");
     }
 
     return UserEntity.mapToInterface(user);
+  }
+
+  public async readByIdWithSlackBotToken(
+    id: string
+  ): Promise<UserWithSlackBotToken> {
+    const user = await this.userModel
+      .findById(id)
+      .select("+slackBotToken")
+      .lean<UserEntity & { slackBotToken?: string }>()
+      .exec();
+
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    if (!user.slackBotToken) {
+      throw new Error("User is not linked to Slack");
+    }
+
+    return {
+      user: UserEntity.mapToInterface(user),
+      slackBotToken: user.slackBotToken,
+    };
   }
 }

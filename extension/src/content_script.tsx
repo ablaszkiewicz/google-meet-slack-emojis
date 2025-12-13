@@ -559,11 +559,9 @@ if (document.readyState === "loading") {
   init();
 }
 
-// Also listen for storage changes to reload emojis when user logs in
-// Listen for storage changes to reload emojis when user logs in
 chrome.storage.onChanged.addListener((changes, areaName) => {
-  if (areaName === "sync" && changes["slack_bot_token"]) {
-    console.log("[MeetEmoji] Token changed, reloading emojis");
+  if (areaName === "sync" && changes["backend_jwt"]) {
+    console.log("[MeetEmoji] Auth changed, reloading emojis");
     loadEmojis();
   }
 });

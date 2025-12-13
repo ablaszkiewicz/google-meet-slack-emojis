@@ -1,9 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
-import { SlackAuthState, SlackMessage } from "./slack/types";
-import { getWorkspaceEmojis, getBotToken, SlackEmoji } from "./slack/auth";
+import { AuthState, SlackEmoji, SlackMessage } from "./slack/types";
 
-// Inline styles for the popup
 const styles = {
   container: {
     width: "340px",
@@ -290,7 +288,6 @@ const styles = {
   } as React.CSSProperties,
 };
 
-// CSS keyframes for animations
 const styleSheet = `
   *, *::before, *::after {
     box-sizing: border-box;
@@ -340,7 +337,6 @@ const styleSheet = `
   }
 `;
 
-// Slack logo SVG component
 const SlackLogo = ({ size = 40 }: { size?: number }) => (
   <svg width={size} height={size} viewBox="0 0 54 54" fill="none">
     <path
@@ -363,24 +359,21 @@ const SlackLogo = ({ size = 40 }: { size?: number }) => (
 );
 
 const Popup = () => {
-  const [authState, setAuthState] = useState<SlackAuthState>({
+  const [authState, setAuthState] = useState<AuthState>({
     isAuthenticated: false,
     user: null,
-    team: null,
-    accessToken: null,
+    token: null,
   });
   const [isLoading, setIsLoading] = useState(true);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [buttonHover, setButtonHover] = useState(false);
 
-  // Emoji state
   const [emojis, setEmojis] = useState<SlackEmoji[]>([]);
   const [isLoadingEmojis, setIsLoadingEmojis] = useState(false);
   const [emojiSearch, setEmojiSearch] = useState("");
   const [hoveredEmoji, setHoveredEmoji] = useState<string | null>(null);
 
-  // Fetch auth state on mount
   useEffect(() => {
     chrome.runtime.sendMessage(
       { type: "SLACK_GET_AUTH_STATE" },
@@ -393,34 +386,34 @@ const Popup = () => {
     );
   }, []);
 
-  // Fetch emojis when authenticated
   useEffect(() => {
     if (authState.isAuthenticated && emojis.length === 0) {
       fetchEmojis();
     }
-  }, [authState.isAuthenticated, authState.accessToken]);
+  }, [authState.isAuthenticated, authState.token]);
 
   const fetchEmojis = async () => {
     if (!authState.isAuthenticated) return;
 
     setIsLoadingEmojis(true);
-    try {
-      // Use bot token for emoji access
-      const botToken = await getBotToken();
-      if (!botToken) {
-        throw new Error(
-          "No bot token available. Please sign out and sign in again."
-        );
+    chrome.runtime.sendMessage(
+      { type: "SLACK_GET_EMOJIS" },
+      (response: SlackMessage) => {
+        try {
+          if (response?.type === "SLACK_EMOJIS_SUCCESS") {
+            setEmojis(response.payload);
+            return;
+          }
+          if (response?.type === "SLACK_EMOJIS_ERROR") {
+            setError(response.payload);
+            return;
+          }
+          setError("Failed to load emojis");
+        } finally {
+          setIsLoadingEmojis(false);
+        }
       }
-      const emojiList = await getWorkspaceEmojis(botToken);
-      setEmojis(emojiList);
-      console.log(`[Popup] Loaded ${emojiList.length} emojis`);
-    } catch (err) {
-      console.error("[Popup] Failed to load emojis:", err);
-      setError(err instanceof Error ? err.message : "Failed to load emojis");
-    } finally {
-      setIsLoadingEmojis(false);
-    }
+    );
   };
 
   const handleLogin = () => {
@@ -455,10 +448,8 @@ const Popup = () => {
 
   const handleEmojiClick = (emoji: SlackEmoji) => {
     console.log("Clicked emoji:", emoji.name);
-    // TODO: Use this emoji for Google Meet reactions
   };
 
-  // Filter emojis based on search
   const filteredEmojis = emojis.filter((emoji) =>
     emoji.name.toLowerCase().includes(emojiSearch.toLowerCase())
   );
@@ -472,17 +463,17 @@ const Popup = () => {
           <div style={styles.headerText}>
             <h1 style={styles.title}>Meet Emoji Reactions</h1>
             <p style={styles.subtitle}>
-              {authState.isAuthenticated && authState.team
-                ? authState.team.name
+              {authState.isAuthenticated && authState.user?.slackTeamName
+                ? authState.user.slackTeamName
                 : "Slack integration for Google Meet"}
             </p>
           </div>
           {authState.isAuthenticated &&
             authState.user &&
-            (authState.user.image_72 ? (
+            (authState.user.slackUserAvatar ? (
               <img
-                src={authState.user.image_72}
-                alt={authState.user.name}
+                src={authState.user.slackUserAvatar}
+                alt={authState.user.slackUserName ?? "Slack user"}
                 style={styles.userAvatar}
                 onClick={handleLogout}
                 title="Click to sign out"
@@ -502,7 +493,7 @@ const Popup = () => {
                 onClick={handleLogout}
                 title="Click to sign out"
               >
-                {authState.user.name?.[0]?.toUpperCase() || "?"}
+                {authState.user.slackUserName?.[0]?.toUpperCase() || "?"}
               </div>
             ))}
         </header>
