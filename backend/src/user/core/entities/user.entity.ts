@@ -1,9 +1,9 @@
-import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { IUser } from './user.interface';
-import { HydratedDocument } from 'mongoose';
-import { AuthMethod } from '../enum/auth-method.enum';
+import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
+import { IUser } from "./user.interface";
+import { HydratedDocument } from "mongoose";
+import { AuthMethod } from "../enum/auth-method.enum";
 
-@Schema({ collection: 'users' })
+@Schema({ collection: "users" })
 export class UserEntity {
   _id: string;
 
@@ -17,7 +17,7 @@ export class UserEntity {
   passwordHash?: string;
 
   @Prop({ type: Date })
-  lastActivityDate: string;
+  lastActivityDate: Date;
 
   @Prop()
   slackUserId?: string;
@@ -51,5 +51,5 @@ export const UserSchema = SchemaFactory.createForClass(UserEntity);
 
 UserSchema.index(
   { slackTeamId: 1, slackUserId: 1 },
-  { unique: true, sparse: true },
+  { unique: true, sparse: true }
 );

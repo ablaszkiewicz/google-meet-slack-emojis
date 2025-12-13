@@ -25,25 +25,32 @@ export class UserWriteService {
   }
 
   public async upsertSlackUser(dto: UpsertSlackUserDto): Promise<IUser> {
-    const user = await this.userModel
-      .findOneAndUpdate(
-        { slackTeamId: dto.slackTeamId, slackUserId: dto.slackUserId },
-        {
-          $set: {
-            email: dto.email,
-            authMethod: AuthMethod.Slack,
-            slackUserId: dto.slackUserId,
-            slackTeamId: dto.slackTeamId,
-            slackTeamName: dto.slackTeamName,
-            slackUserName: dto.slackUserName,
-            slackUserAvatar: dto.slackUserAvatar,
-            slackBotToken: dto.slackBotToken,
-            lastActivityDate: new Date(),
-          },
-        },
-        { upsert: true, new: true }
-      )
-      .exec();
+    const filter = {
+      slackTeamId: dto.slackTeamId,
+      slackUserId: dto.slackUserId,
+    };
+
+    const $set: Partial<UserEntity> = {
+      authMethod: AuthMethod.Slack,
+      slackUserId: dto.slackUserId,
+      slackTeamId: dto.slackTeamId,
+      slackBotToken: dto.slackBotToken,
+      lastActivityDate: new Date(),
+    };
+
+    if (dto.email !== undefined) $set.email = dto.email;
+    if (dto.slackTeamName !== undefined) $set.slackTeamName = dto.slackTeamName;
+    if (dto.slackUserName !== undefined) $set.slackUserName = dto.slackUserName;
+    if (dto.slackUserAvatar !== undefined)
+      $set.slackUserAvatar = dto.slackUserAvatar;
+
+    await this.userModel.updateOne(filter, { $set }, { upsert: true }).exec();
+
+    const user = await this.userModel.findOne(filter).lean<UserEntity>().exec();
+
+    if (!user) {
+      throw new Error("User not found");
+    }
 
     return UserEntity.mapToInterface(user);
   }
