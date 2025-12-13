@@ -1,6 +1,6 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
-import { UserReadService } from '../user/read/user-read.service';
-import { SlackEmojiDto } from './dto/slack-emoji.dto';
+import { BadRequestException, Injectable } from "@nestjs/common";
+import { UserReadService } from "../user/read/user-read.service";
+import { SlackEmojiDto } from "./dto/slack-emoji.dto";
 
 type SlackEmojiListResponse = {
   ok: boolean;
@@ -13,36 +13,32 @@ export class SlackService {
   constructor(private readonly userReadService: UserReadService) {}
 
   public async listEmojis(email: string): Promise<SlackEmojiDto[]> {
-    const user = await this.userReadService.readByEmailWithAllFields(email);
+    const botToken = await this.userReadService.readBotTokenByEmail(email);
 
-    if (!user) {
-      throw new BadRequestException('User not found');
+    if (!botToken) {
+      throw new BadRequestException("User not found");
     }
 
-    if (!user.slackBotToken) {
-      throw new BadRequestException('User is not linked to Slack');
-    }
-
-    const response = await fetch('https://slack.com/api/emoji.list', {
-      method: 'GET',
-      headers: { Authorization: `Bearer ${user.slackBotToken}` },
+    const response = await fetch("https://slack.com/api/emoji.list", {
+      method: "GET",
+      headers: { Authorization: `Bearer ${botToken}` },
     });
 
     const data = (await response.json()) as SlackEmojiListResponse;
 
     if (!data.ok) {
-      throw new BadRequestException(data.error ?? 'Failed to fetch emojis');
+      throw new BadRequestException(data.error ?? "Failed to fetch emojis");
     }
 
     const emojis: SlackEmojiDto[] = [];
 
     for (const [name, value] of Object.entries(data.emoji ?? {})) {
-      if (value.startsWith('alias:')) {
+      if (value.startsWith("alias:")) {
         emojis.push({
           name,
-          url: '',
+          url: "",
           isAlias: true,
-          aliasFor: value.replace('alias:', ''),
+          aliasFor: value.replace("alias:", ""),
         });
         continue;
       }
@@ -51,12 +47,12 @@ export class SlackService {
     }
 
     const emojiMap = new Map(
-      emojis.filter((e) => !e.isAlias).map((e) => [e.name, e.url]),
+      emojis.filter((e) => !e.isAlias).map((e) => [e.name, e.url])
     );
 
     for (const emoji of emojis) {
       if (emoji.isAlias && emoji.aliasFor) {
-        emoji.url = emojiMap.get(emoji.aliasFor) ?? '';
+        emoji.url = emojiMap.get(emoji.aliasFor) ?? "";
       }
     }
 
@@ -65,5 +61,3 @@ export class SlackService {
       .sort((a, b) => a.name.localeCompare(b.name));
   }
 }
-
-

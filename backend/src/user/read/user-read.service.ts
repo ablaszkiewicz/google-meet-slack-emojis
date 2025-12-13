@@ -38,9 +38,17 @@ export class UserReadService {
     return UserEntity.mapToInterface(user);
   }
 
-  public async readByEmailWithAllFields(
-    email: string
-  ): Promise<UserEntity | null> {
-    return this.userModel.findOne({ email: email }).lean<UserEntity>().exec();
+  public async readBotTokenByEmail(email: string): Promise<string | null> {
+    const user = await this.userModel
+      .findOne({ email: email })
+      .select("+slackBotToken")
+      .lean<UserEntity>()
+      .exec();
+
+    if (!user) {
+      return null;
+    }
+
+    return user.slackBotToken;
   }
 }

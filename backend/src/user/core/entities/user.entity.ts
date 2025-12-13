@@ -1,7 +1,6 @@
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import { IUser } from "./user.interface";
 import { HydratedDocument } from "mongoose";
-import { AuthMethod } from "../enum/auth-method.enum";
 
 @Schema({ collection: "users" })
 export class UserEntity {
@@ -11,31 +10,22 @@ export class UserEntity {
   email: string;
 
   @Prop()
-  authMethod: AuthMethod;
+  slackUserId: string;
 
   @Prop()
-  passwordHash?: string;
-
-  @Prop({ type: Date })
-  lastActivityDate: Date;
+  slackTeamId: string;
 
   @Prop()
-  slackUserId?: string;
+  slackTeamName: string;
 
   @Prop()
-  slackTeamId?: string;
+  name: string;
 
   @Prop()
-  slackTeamName?: string;
+  avatar: string;
 
-  @Prop()
-  name?: string;
-
-  @Prop()
-  avatar?: string;
-
-  @Prop()
-  slackBotToken?: string;
+  @Prop({ select: false })
+  slackBotToken: string;
 
   public static mapToInterface(user: UserEntity): IUser {
     return {

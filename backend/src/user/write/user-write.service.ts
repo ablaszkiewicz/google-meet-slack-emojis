@@ -4,7 +4,6 @@ import { Model, Types } from "mongoose";
 import { UserEntity } from "../core/entities/user.entity";
 import { IUser } from "../core/entities/user.interface";
 import { UpsertUserDto } from "./dto/upsert-slack-user.dto";
-import { AuthMethod } from "../core/enum/auth-method.enum";
 
 @Injectable()
 export class UserWriteService {
@@ -18,12 +17,10 @@ export class UserWriteService {
     };
 
     const $set: Partial<UserEntity> = {
-      authMethod: AuthMethod.Slack,
       email: dto.email,
       slackUserId: dto.slackUserId,
       slackTeamId: dto.slackTeamId,
       slackBotToken: dto.slackBotToken,
-      lastActivityDate: new Date(),
     };
 
     if (dto.slackTeamName !== undefined) $set.slackTeamName = dto.slackTeamName;
@@ -48,15 +45,5 @@ export class UserWriteService {
     }
 
     return UserEntity.mapToInterface(user);
-  }
-
-  public async updateLastActivityDate(
-    userId: string,
-    date: Date
-  ): Promise<void> {
-    await this.userModel.updateOne(
-      { _id: new Types.ObjectId(userId) },
-      { lastActivityDate: date }
-    );
   }
 }
