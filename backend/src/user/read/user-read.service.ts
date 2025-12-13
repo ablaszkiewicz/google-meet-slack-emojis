@@ -15,49 +15,32 @@ export class UserReadService {
     @InjectModel(UserEntity.name) private userModel: Model<UserEntity>
   ) {}
 
-  public async readById(id: string): Promise<IUser> {
+  public async readById(id: string): Promise<IUser | null> {
     const user = await this.userModel.findById(id).lean<UserEntity>().exec();
 
     if (!user) {
-      throw new Error("User not found");
+      return null;
     }
 
     return UserEntity.mapToInterface(user);
   }
 
-  public async readByEmail(email: string): Promise<IUser> {
+  public async readByEmail(email: string): Promise<IUser | null> {
     const user = await this.userModel
       .findOne({ email: email })
       .lean<UserEntity>()
       .exec();
 
     if (!user) {
-      throw new Error("User not found");
+      return null;
     }
 
     return UserEntity.mapToInterface(user);
   }
 
-  public async readByIdWithSlackBotToken(
-    id: string
-  ): Promise<UserWithSlackBotToken> {
-    const user = await this.userModel
-      .findById(id)
-      .select("+slackBotToken")
-      .lean<UserEntity & { slackBotToken?: string }>()
-      .exec();
-
-    if (!user) {
-      throw new Error("User not found");
-    }
-
-    if (!user.slackBotToken) {
-      throw new Error("User is not linked to Slack");
-    }
-
-    return {
-      user: UserEntity.mapToInterface(user),
-      slackBotToken: user.slackBotToken,
-    };
+  public async readByEmailWithAllFields(
+    email: string
+  ): Promise<UserEntity | null> {
+    return this.userModel.findOne({ email: email }).lean<UserEntity>().exec();
   }
 }

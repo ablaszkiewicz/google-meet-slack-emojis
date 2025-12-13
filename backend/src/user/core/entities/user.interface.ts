@@ -8,6 +8,6 @@ export interface IUser {
   slackUserId?: string;
   slackTeamId?: string;
   slackTeamName?: string;
-  slackUserName?: string;
-  slackUserAvatar?: string;
+  name?: string;
+  avatar?: string;
 }

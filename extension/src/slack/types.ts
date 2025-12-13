@@ -3,8 +3,8 @@ export interface BackendUser {
   email?: string;
   authMethod: string;
   slackTeamName?: string;
-  slackUserName?: string;
-  slackUserAvatar?: string;
+  name?: string;
+  avatar?: string;
   slackTeamId?: string;
   slackUserId?: string;
 }

@@ -1,9 +1,9 @@
-export class UpsertSlackUserDto {
+export class UpsertUserDto {
   slackUserId: string;
   slackTeamId: string;
   slackBotToken: string;
-  email?: string;
+  email: string;
   slackTeamName?: string;
-  slackUserName?: string;
-  slackUserAvatar?: string;
+  name?: string;
+  avatar?: string;
 }

@@ -1,10 +1,10 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
-import { UserWriteService } from '../../user/write/user-write.service';
-import { CustomJwtService } from '../custom-jwt/custom-jwt.service';
+import { BadRequestException, Injectable } from "@nestjs/common";
+import { UserWriteService } from "../../user/write/user-write.service";
+import { CustomJwtService } from "../custom-jwt/custom-jwt.service";
 import {
   ExchangeSlackCodeRequest,
   ExchangeSlackCodeResponse,
-} from './dto/exchange-code.dto';
+} from "./dto/exchange-code.dto";
 
 type SlackOAuthResponse = {
   ok: boolean;
@@ -41,17 +41,17 @@ type SlackIdentityResponse = {
 export class AuthSlackService {
   constructor(
     private readonly userWriteService: UserWriteService,
-    private readonly jwtService: CustomJwtService,
+    private readonly jwtService: CustomJwtService
   ) {}
 
   public async exchangeCode(
-    dto: ExchangeSlackCodeRequest,
+    dto: ExchangeSlackCodeRequest
   ): Promise<ExchangeSlackCodeResponse> {
     const slackClientId = process.env.SLACK_CLIENT_ID;
     const slackClientSecret = process.env.SLACK_CLIENT_SECRET;
 
     if (!slackClientId || !slackClientSecret) {
-      throw new Error('Missing SLACK_CLIENT_ID or SLACK_CLIENT_SECRET');
+      throw new Error("Missing SLACK_CLIENT_ID or SLACK_CLIENT_SECRET");
     }
 
     const token = await this.exchangeForTokens({
@@ -68,29 +68,38 @@ export class AuthSlackService {
     const slackTeamName = token.team?.name;
 
     if (!botToken || !userAccessToken || !slackUserId || !slackTeamId) {
-      throw new BadRequestException('Slack token exchange failed');
+      throw new BadRequestException("Slack token exchange failed");
     }
 
     const identity = await this.fetchIdentity(userAccessToken);
 
-    const slackUserName = identity.user?.name;
+    const name = identity.user?.name;
     const slackUserEmail = identity.user?.email;
-    const slackUserAvatar =
-      identity.user?.image_192 ?? identity.user?.image_72 ?? identity.user?.image_512;
+    const avatar =
+      identity.user?.image_192 ??
+      identity.user?.image_72 ??
+      identity.user?.image_512;
 
-    const user = await this.userWriteService.upsertSlackUser({
+    if (!slackUserEmail) {
+      throw new BadRequestException("Slack identity did not include email");
+    }
+
+    const user = await this.userWriteService.upsertUser({
       slackUserId,
       slackTeamId,
       slackBotToken: botToken,
       slackTeamName,
-      slackUserName,
-      slackUserAvatar,
+      name,
+      avatar,
       email: slackUserEmail,
     });
 
-    const jwt = await this.jwtService.sign({ id: user.id });
+    const jwt = await this.jwtService.sign({
+      id: user.id,
+      email: slackUserEmail,
+    });
 
-    return { token: jwt, user };
+    return { token: jwt };
   }
 
   private async exchangeForTokens(input: {
@@ -106,35 +115,39 @@ export class AuthSlackService {
       redirect_uri: input.redirectUri,
     });
 
-    const response = await fetch('https://slack.com/api/oauth.v2.access', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    const response = await fetch("https://slack.com/api/oauth.v2.access", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: params.toString(),
     });
 
     const data = (await response.json()) as SlackOAuthResponse;
 
     if (!data.ok) {
-      throw new BadRequestException(data.error ?? 'Slack token exchange failed');
+      throw new BadRequestException(
+        data.error ?? "Slack token exchange failed"
+      );
     }
 
     return data;
   }
 
-  private async fetchIdentity(userAccessToken: string): Promise<SlackIdentityResponse> {
-    const response = await fetch('https://slack.com/api/users.identity', {
-      method: 'GET',
+  private async fetchIdentity(
+    userAccessToken: string
+  ): Promise<SlackIdentityResponse> {
+    const response = await fetch("https://slack.com/api/users.identity", {
+      method: "GET",
       headers: { Authorization: `Bearer ${userAccessToken}` },
     });
 
     const data = (await response.json()) as SlackIdentityResponse;
 
     if (!data.ok) {
-      throw new BadRequestException(data.error ?? 'Slack identity fetch failed');
+      throw new BadRequestException(
+        data.error ?? "Slack identity fetch failed"
+      );
     }
 
     return data;
   }
 }
-
-

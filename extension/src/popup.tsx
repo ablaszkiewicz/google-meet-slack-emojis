@@ -470,10 +470,10 @@ const Popup = () => {
           </div>
           {authState.isAuthenticated &&
             authState.user &&
-            (authState.user.slackUserAvatar ? (
+            (authState.user.avatar ? (
               <img
-                src={authState.user.slackUserAvatar}
-                alt={authState.user.slackUserName ?? "Slack user"}
+                src={authState.user.avatar}
+                alt={authState.user.name ?? "Slack user"}
                 style={styles.userAvatar}
                 onClick={handleLogout}
                 title="Click to sign out"
@@ -493,7 +493,7 @@ const Popup = () => {
                 onClick={handleLogout}
                 title="Click to sign out"
               >
-                {authState.user.slackUserName?.[0]?.toUpperCase() || "?"}
+                {authState.user.name?.[0]?.toUpperCase() || "?"}
               </div>
             ))}
         </header>

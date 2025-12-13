@@ -12,14 +12,20 @@ type SlackEmojiListResponse = {
 export class SlackService {
   constructor(private readonly userReadService: UserReadService) {}
 
-  public async listEmojis(userId: string): Promise<SlackEmojiDto[]> {
-    const { slackBotToken } = await this.userReadService.readByIdWithSlackBotToken(
-      userId,
-    );
+  public async listEmojis(email: string): Promise<SlackEmojiDto[]> {
+    const user = await this.userReadService.readByEmailWithAllFields(email);
+
+    if (!user) {
+      throw new BadRequestException('User not found');
+    }
+
+    if (!user.slackBotToken) {
+      throw new BadRequestException('User is not linked to Slack');
+    }
 
     const response = await fetch('https://slack.com/api/emoji.list', {
       method: 'GET',
-      headers: { Authorization: `Bearer ${slackBotToken}` },
+      headers: { Authorization: `Bearer ${user.slackBotToken}` },
     });
 
     const data = (await response.json()) as SlackEmojiListResponse;

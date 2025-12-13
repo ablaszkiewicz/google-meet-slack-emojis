@@ -29,17 +29,18 @@ export class UserEntity {
   slackTeamName?: string;
 
   @Prop()
-  slackUserName?: string;
+  name?: string;
 
   @Prop()
-  slackUserAvatar?: string;
+  avatar?: string;
 
-  @Prop({ select: false })
+  @Prop()
   slackBotToken?: string;
 
   public static mapToInterface(user: UserEntity): IUser {
     return {
-      ...user,
+      ...(user as any),
+      slackBotToken: undefined,
       id: user._id.toString(),
     };
   }

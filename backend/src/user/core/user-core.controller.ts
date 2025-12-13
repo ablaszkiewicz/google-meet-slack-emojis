@@ -1,4 +1,4 @@
-import { Controller, Get } from '@nestjs/common';
+import { Controller, Get, NotFoundException } from '@nestjs/common';
 import { CurrentUserId } from '../../auth/core/decorators/current-user-id.decorator';
 import { UserReadService } from '../read/user-read.service';
 import { IUser } from './entities/user.interface';
@@ -10,6 +10,10 @@ export class UserCoreController {
   @Get('me')
   public async readCurrentUser(@CurrentUserId() userId): Promise<IUser> {
     const user = await this.userReadService.readById(userId);
+
+    if (!user) {
+      throw new NotFoundException();
+    }
 
     return user;
   }

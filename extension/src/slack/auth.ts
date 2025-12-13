@@ -111,15 +111,27 @@ export async function startOAuthFlow(): Promise<AuthState> {
             return;
           }
 
-          const data = (await exchangeResponse.json()) as {
-            token: string;
-            user: BackendUser;
-          };
+          const data = (await exchangeResponse.json()) as { token: string };
+
+          const meResponse = await fetch(
+            `${BACKEND_CONFIG.BASE_URL}/users/me`,
+            {
+              method: "GET",
+              headers: { Authorization: `Bearer ${data.token}` },
+            }
+          );
+
+          if (!meResponse.ok) {
+            reject(new Error("Failed to load user"));
+            return;
+          }
+
+          const user = (await meResponse.json()) as BackendUser;
 
           const authState: AuthState = {
             isAuthenticated: true,
             token: data.token,
-            user: data.user,
+            user,
           };
 
           await saveAuthState(authState);
