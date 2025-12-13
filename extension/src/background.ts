@@ -1,4 +1,10 @@
-import { startOAuthFlow, getAuthState, clearAuthState } from "./slack/auth";
+import {
+  startOAuthFlow,
+  getAuthState,
+  clearAuthState,
+  getBotToken,
+  getWorkspaceEmojis,
+} from "./slack/auth";
 
 console.log("[Background] Service worker starting...");
 
@@ -10,15 +16,23 @@ type SlackAuthPayload = {
   accessToken: string | null;
 };
 
+type SlackEmoji = {
+  name: string;
+  url: string;
+};
+
 type SlackMessage =
   | { type: "SLACK_LOGIN" }
   | { type: "SLACK_LOGOUT" }
   | { type: "SLACK_GET_AUTH_STATE" }
+  | { type: "SLACK_GET_EMOJIS" }
   | { type: "SLACK_AUTH_SUCCESS"; payload: SlackAuthPayload }
   | { type: "SLACK_AUTH_ERROR"; payload: string }
-  | { type: "SLACK_AUTH_STATE"; payload: SlackAuthPayload };
+  | { type: "SLACK_AUTH_STATE"; payload: SlackAuthPayload }
+  | { type: "SLACK_EMOJIS_SUCCESS"; payload: SlackEmoji[] }
+  | { type: "SLACK_EMOJIS_ERROR"; payload: string };
 
-// Handle messages from popup
+// Handle messages from popup and content script
 chrome.runtime.onMessage.addListener(
   (
     message: SlackMessage,
@@ -38,6 +52,10 @@ chrome.runtime.onMessage.addListener(
 
       case "SLACK_GET_AUTH_STATE":
         handleGetAuthState(sendResponse);
+        return true;
+
+      case "SLACK_GET_EMOJIS":
+        handleGetEmojis(sendResponse);
         return true;
 
       default:
@@ -100,6 +118,36 @@ async function handleGetAuthState(
       type: "SLACK_AUTH_ERROR",
       payload:
         error instanceof Error ? error.message : "Unknown error occurred",
+    });
+  }
+}
+
+async function handleGetEmojis(sendResponse: (response: SlackMessage) => void) {
+  try {
+    console.log("[Background] Fetching emojis...");
+    const botToken = await getBotToken();
+
+    if (!botToken) {
+      sendResponse({
+        type: "SLACK_EMOJIS_ERROR",
+        payload: "No bot token. Please login via extension popup.",
+      });
+      return;
+    }
+
+    const emojiList = await getWorkspaceEmojis(botToken);
+    console.log(`[Background] Fetched ${emojiList.length} emojis`);
+
+    sendResponse({
+      type: "SLACK_EMOJIS_SUCCESS",
+      payload: emojiList,
+    });
+  } catch (error) {
+    console.error("[Background] Error fetching emojis:", error);
+    sendResponse({
+      type: "SLACK_EMOJIS_ERROR",
+      payload:
+        error instanceof Error ? error.message : "Failed to fetch emojis",
     });
   }
 }
