@@ -1,12 +1,14 @@
 import React, { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { SlackAuthState, SlackMessage } from "./slack/types";
+import { getWorkspaceEmojis, getBotToken, SlackEmoji } from "./slack/auth";
 
 // Inline styles for the popup
 const styles = {
   container: {
     width: "340px",
     minHeight: "400px",
+    maxHeight: "600px",
     background:
       "linear-gradient(145deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)",
     fontFamily: "'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif",
@@ -14,55 +16,79 @@ const styles = {
     padding: "0",
     margin: "0",
     overflow: "hidden",
+    display: "flex",
+    flexDirection: "column" as const,
+    boxSizing: "border-box" as const,
   } as React.CSSProperties,
 
   header: {
     background: "rgba(255, 255, 255, 0.05)",
     backdropFilter: "blur(10px)",
-    padding: "20px 24px",
+    padding: "16px 20px",
     borderBottom: "1px solid rgba(255, 255, 255, 0.1)",
     display: "flex",
     alignItems: "center",
     gap: "12px",
+    flexShrink: 0,
   } as React.CSSProperties,
 
   logo: {
-    width: "36px",
-    height: "36px",
+    width: "32px",
+    height: "32px",
     background: "linear-gradient(135deg, #00d4aa 0%, #00b894 100%)",
-    borderRadius: "10px",
+    borderRadius: "8px",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    fontSize: "20px",
+    fontSize: "16px",
     boxShadow: "0 4px 15px rgba(0, 212, 170, 0.3)",
   } as React.CSSProperties,
 
   headerText: {
     display: "flex",
     flexDirection: "column" as const,
+    flex: 1,
   } as React.CSSProperties,
 
   title: {
-    fontSize: "16px",
+    fontSize: "14px",
     fontWeight: 600,
     margin: 0,
     letterSpacing: "-0.3px",
   } as React.CSSProperties,
 
   subtitle: {
-    fontSize: "12px",
+    fontSize: "11px",
     color: "rgba(255, 255, 255, 0.6)",
     margin: "2px 0 0 0",
   } as React.CSSProperties,
 
+  userAvatar: {
+    width: "32px",
+    height: "32px",
+    borderRadius: "50%",
+    objectFit: "cover" as const,
+    cursor: "pointer",
+    transition: "all 0.2s ease",
+    border: "2px solid rgba(255, 255, 255, 0.2)",
+    flexShrink: 0,
+  } as React.CSSProperties,
+
+  userAvatarHover: {
+    border: "2px solid rgba(255, 82, 82, 0.5)",
+    boxShadow: "0 0 10px rgba(255, 82, 82, 0.3)",
+  } as React.CSSProperties,
+
   content: {
-    padding: "32px 24px",
+    padding: "16px",
     display: "flex",
     flexDirection: "column" as const,
     alignItems: "center",
     justifyContent: "center",
-    minHeight: "280px",
+    flex: 1,
+    overflow: "hidden",
+    boxSizing: "border-box" as const,
+    width: "100%",
   } as React.CSSProperties,
 
   loginContent: {
@@ -128,130 +154,90 @@ const styles = {
     boxShadow: "0 6px 25px rgba(74, 21, 75, 0.5)",
   } as React.CSSProperties,
 
-  profileContent: {
+  emojiContent: {
     width: "100%",
+    height: "100%",
+    display: "flex",
+    flexDirection: "column" as const,
     animation: "fadeIn 0.3s ease",
+    overflow: "hidden",
+    boxSizing: "border-box" as const,
   } as React.CSSProperties,
 
-  profileCard: {
-    background: "rgba(255, 255, 255, 0.08)",
-    borderRadius: "16px",
-    padding: "24px",
-    marginBottom: "24px",
-    border: "1px solid rgba(255, 255, 255, 0.1)",
-  } as React.CSSProperties,
-
-  profileHeader: {
+  emojiHeader: {
     display: "flex",
     alignItems: "center",
-    gap: "16px",
-    marginBottom: "20px",
+    justifyContent: "space-between",
+    marginBottom: "12px",
+    flexShrink: 0,
   } as React.CSSProperties,
 
-  avatar: {
-    width: "56px",
-    height: "56px",
-    borderRadius: "14px",
-    objectFit: "cover" as const,
-    boxShadow: "0 4px 15px rgba(0, 0, 0, 0.3)",
-    border: "2px solid rgba(255, 255, 255, 0.2)",
-  } as React.CSSProperties,
-
-  avatarPlaceholder: {
-    width: "56px",
-    height: "56px",
-    borderRadius: "14px",
-    background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    fontSize: "24px",
+  emojiTitle: {
+    fontSize: "13px",
     fontWeight: 600,
-    boxShadow: "0 4px 15px rgba(102, 126, 234, 0.3)",
+    color: "rgba(255, 255, 255, 0.9)",
   } as React.CSSProperties,
 
-  userInfo: {
-    flex: 1,
+  emojiCount: {
+    fontSize: "12px",
+    color: "rgba(255, 255, 255, 0.5)",
+    background: "rgba(255, 255, 255, 0.1)",
+    padding: "4px 10px",
+    borderRadius: "12px",
   } as React.CSSProperties,
 
-  userName: {
-    fontSize: "18px",
-    fontWeight: 600,
-    marginBottom: "4px",
-  } as React.CSSProperties,
-
-  userEmail: {
-    fontSize: "13px",
-    color: "rgba(255, 255, 255, 0.6)",
-  } as React.CSSProperties,
-
-  teamBadge: {
-    display: "flex",
-    alignItems: "center",
-    gap: "8px",
-    background: "rgba(0, 212, 170, 0.15)",
-    padding: "10px 14px",
-    borderRadius: "10px",
-    border: "1px solid rgba(0, 212, 170, 0.3)",
-  } as React.CSSProperties,
-
-  teamDot: {
-    width: "8px",
-    height: "8px",
-    borderRadius: "50%",
-    background: "#00d4aa",
-    boxShadow: "0 0 10px rgba(0, 212, 170, 0.5)",
-  } as React.CSSProperties,
-
-  teamName: {
-    fontSize: "13px",
-    color: "#00d4aa",
-    fontWeight: 500,
-  } as React.CSSProperties,
-
-  statusBadge: {
-    display: "flex",
-    alignItems: "center",
-    gap: "8px",
-    padding: "12px 16px",
-    background: "rgba(0, 212, 170, 0.1)",
-    borderRadius: "10px",
-    marginBottom: "16px",
-    border: "1px solid rgba(0, 212, 170, 0.2)",
-  } as React.CSSProperties,
-
-  statusDot: {
-    width: "10px",
-    height: "10px",
-    borderRadius: "50%",
-    background: "#00d4aa",
-    animation: "pulse 2s infinite",
-    boxShadow: "0 0 10px rgba(0, 212, 170, 0.5)",
-  } as React.CSSProperties,
-
-  statusText: {
-    fontSize: "13px",
-    color: "#00d4aa",
-    fontWeight: 500,
-  } as React.CSSProperties,
-
-  logoutButton: {
+  emojiSearch: {
     width: "100%",
-    padding: "12px 24px",
+    padding: "10px 14px",
     background: "rgba(255, 255, 255, 0.08)",
     border: "1px solid rgba(255, 255, 255, 0.15)",
     borderRadius: "10px",
-    color: "rgba(255, 255, 255, 0.8)",
-    fontSize: "14px",
-    fontWeight: 500,
-    cursor: "pointer",
-    transition: "all 0.2s ease",
+    color: "#ffffff",
+    fontSize: "13px",
+    marginBottom: "12px",
+    outline: "none",
+    flexShrink: 0,
+    boxSizing: "border-box" as const,
   } as React.CSSProperties,
 
-  logoutButtonHover: {
-    background: "rgba(255, 82, 82, 0.15)",
-    borderColor: "rgba(255, 82, 82, 0.3)",
-    color: "#ff5252",
+  emojiGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(6, 1fr)",
+    gap: "6px",
+    overflowY: "auto" as const,
+    overflowX: "hidden" as const,
+    flex: 1,
+    padding: "8px",
+    background: "rgba(0, 0, 0, 0.2)",
+    borderRadius: "12px",
+    boxSizing: "border-box" as const,
+  } as React.CSSProperties,
+
+  emojiItem: {
+    aspectRatio: "1",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: "8px",
+    cursor: "pointer",
+    transition: "all 0.15s ease",
+    background: "transparent",
+    border: "none",
+    padding: "4px",
+    minWidth: 0,
+  } as React.CSSProperties,
+
+  emojiItemHover: {
+    background: "rgba(255, 255, 255, 0.15)",
+    transform: "scale(1.1)",
+  } as React.CSSProperties,
+
+  emojiImage: {
+    width: "100%",
+    height: "100%",
+    maxWidth: "32px",
+    maxHeight: "32px",
+    objectFit: "contain" as const,
   } as React.CSSProperties,
 
   loading: {
@@ -291,10 +277,25 @@ const styles = {
     color: "#ff8a8a",
     lineHeight: 1.4,
   } as React.CSSProperties,
+
+  logoutButton: {
+    background: "none",
+    border: "none",
+    color: "rgba(255, 255, 255, 0.6)",
+    fontSize: "11px",
+    cursor: "pointer",
+    padding: "4px 8px",
+    borderRadius: "4px",
+    transition: "all 0.2s ease",
+  } as React.CSSProperties,
 };
 
 // CSS keyframes for animations
 const styleSheet = `
+  *, *::before, *::after {
+    box-sizing: border-box;
+  }
+
   @keyframes fadeIn {
     from { opacity: 0; transform: translateY(10px); }
     to { opacity: 1; transform: translateY(0); }
@@ -309,9 +310,33 @@ const styleSheet = `
     50% { opacity: 0.5; }
   }
   
-  body {
+  html, body {
     margin: 0;
     padding: 0;
+    width: 340px;
+    overflow-x: hidden;
+  }
+
+  input::placeholder {
+    color: rgba(255, 255, 255, 0.4);
+  }
+
+  ::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 3px;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 3px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.3);
   }
 `;
 
@@ -348,20 +373,55 @@ const Popup = () => {
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [buttonHover, setButtonHover] = useState(false);
-  const [logoutHover, setLogoutHover] = useState(false);
 
+  // Emoji state
+  const [emojis, setEmojis] = useState<SlackEmoji[]>([]);
+  const [isLoadingEmojis, setIsLoadingEmojis] = useState(false);
+  const [emojiSearch, setEmojiSearch] = useState("");
+  const [hoveredEmoji, setHoveredEmoji] = useState<string | null>(null);
+
+  // Fetch auth state on mount
   useEffect(() => {
-    // Fetch current auth state on mount
     chrome.runtime.sendMessage(
       { type: "SLACK_GET_AUTH_STATE" },
       (response: SlackMessage) => {
         setIsLoading(false);
-        if (response.type === "SLACK_AUTH_STATE") {
+        if (response?.type === "SLACK_AUTH_STATE") {
           setAuthState(response.payload);
         }
       }
     );
   }, []);
+
+  // Fetch emojis when authenticated
+  useEffect(() => {
+    if (authState.isAuthenticated && emojis.length === 0) {
+      fetchEmojis();
+    }
+  }, [authState.isAuthenticated, authState.accessToken]);
+
+  const fetchEmojis = async () => {
+    if (!authState.isAuthenticated) return;
+
+    setIsLoadingEmojis(true);
+    try {
+      // Use bot token for emoji access
+      const botToken = await getBotToken();
+      if (!botToken) {
+        throw new Error(
+          "No bot token available. Please sign out and sign in again."
+        );
+      }
+      const emojiList = await getWorkspaceEmojis(botToken);
+      setEmojis(emojiList);
+      console.log(`[Popup] Loaded ${emojiList.length} emojis`);
+    } catch (err) {
+      console.error("[Popup] Failed to load emojis:", err);
+      setError(err instanceof Error ? err.message : "Failed to load emojis");
+    } finally {
+      setIsLoadingEmojis(false);
+    }
+  };
 
   const handleLogin = () => {
     setIsLoggingIn(true);
@@ -372,9 +432,9 @@ const Popup = () => {
       (response: SlackMessage) => {
         setIsLoggingIn(false);
 
-        if (response.type === "SLACK_AUTH_SUCCESS") {
+        if (response?.type === "SLACK_AUTH_SUCCESS") {
           setAuthState(response.payload);
-        } else if (response.type === "SLACK_AUTH_ERROR") {
+        } else if (response?.type === "SLACK_AUTH_ERROR") {
           setError(response.payload);
         }
       }
@@ -385,21 +445,23 @@ const Popup = () => {
     chrome.runtime.sendMessage(
       { type: "SLACK_LOGOUT" },
       (response: SlackMessage) => {
-        if (response.type === "SLACK_AUTH_STATE") {
+        if (response?.type === "SLACK_AUTH_STATE") {
           setAuthState(response.payload);
+          setEmojis([]);
         }
       }
     );
   };
 
-  const getInitials = (name: string) => {
-    return name
-      .split(" ")
-      .map((part) => part[0])
-      .join("")
-      .toUpperCase()
-      .slice(0, 2);
+  const handleEmojiClick = (emoji: SlackEmoji) => {
+    console.log("Clicked emoji:", emoji.name);
+    // TODO: Use this emoji for Google Meet reactions
   };
+
+  // Filter emojis based on search
+  const filteredEmojis = emojis.filter((emoji) =>
+    emoji.name.toLowerCase().includes(emojiSearch.toLowerCase())
+  );
 
   return (
     <>
@@ -409,8 +471,40 @@ const Popup = () => {
           <div style={styles.logo}>🎯</div>
           <div style={styles.headerText}>
             <h1 style={styles.title}>Meet Emoji Reactions</h1>
-            <p style={styles.subtitle}>Slack integration for Google Meet</p>
+            <p style={styles.subtitle}>
+              {authState.isAuthenticated && authState.team
+                ? authState.team.name
+                : "Slack integration for Google Meet"}
+            </p>
           </div>
+          {authState.isAuthenticated &&
+            authState.user &&
+            (authState.user.image_72 ? (
+              <img
+                src={authState.user.image_72}
+                alt={authState.user.name}
+                style={styles.userAvatar}
+                onClick={handleLogout}
+                title="Click to sign out"
+              />
+            ) : (
+              <div
+                style={{
+                  ...styles.userAvatar,
+                  background:
+                    "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: "12px",
+                  fontWeight: 600,
+                }}
+                onClick={handleLogout}
+                title="Click to sign out"
+              >
+                {authState.user.name?.[0]?.toUpperCase() || "?"}
+              </div>
+            ))}
         </header>
 
         <div style={styles.content}>
@@ -425,56 +519,62 @@ const Popup = () => {
               <span style={styles.loadingText}>Connecting to Slack...</span>
             </div>
           ) : authState.isAuthenticated ? (
-            <div style={styles.profileContent}>
-              <div style={styles.statusBadge}>
-                <div style={styles.statusDot} />
-                <span style={styles.statusText}>Connected to Slack</span>
+            <div style={styles.emojiContent}>
+              <div style={styles.emojiHeader}>
+                <span style={styles.emojiTitle}>Custom Emojis</span>
+                <span style={styles.emojiCount}>
+                  {isLoadingEmojis
+                    ? "Loading..."
+                    : `${filteredEmojis.length} emojis`}
+                </span>
               </div>
 
-              <div style={styles.profileCard}>
-                <div style={styles.profileHeader}>
-                  {authState.user?.image_72 ? (
-                    <img
-                      src={authState.user.image_72}
-                      alt={authState.user.name}
-                      style={styles.avatar}
-                    />
-                  ) : (
-                    <div style={styles.avatarPlaceholder}>
-                      {authState.user?.name
-                        ? getInitials(authState.user.name)
-                        : "?"}
-                    </div>
-                  )}
-                  <div style={styles.userInfo}>
-                    <div style={styles.userName}>
-                      {authState.user?.name || "User"}
-                    </div>
-                    <div style={styles.userEmail}>
-                      {authState.user?.email || ""}
-                    </div>
-                  </div>
+              <input
+                type="text"
+                placeholder="Search emojis..."
+                value={emojiSearch}
+                onChange={(e) => setEmojiSearch(e.target.value)}
+                style={styles.emojiSearch}
+              />
+
+              {isLoadingEmojis ? (
+                <div style={{ ...styles.loading, flex: 1 }}>
+                  <div style={styles.spinner} />
+                  <span style={styles.loadingText}>Loading emojis...</span>
                 </div>
+              ) : (
+                <div style={styles.emojiGrid}>
+                  {filteredEmojis.map((emoji) => (
+                    <button
+                      key={emoji.name}
+                      style={{
+                        ...styles.emojiItem,
+                        ...(hoveredEmoji === emoji.name
+                          ? styles.emojiItemHover
+                          : {}),
+                      }}
+                      onClick={() => handleEmojiClick(emoji)}
+                      onMouseEnter={() => setHoveredEmoji(emoji.name)}
+                      onMouseLeave={() => setHoveredEmoji(null)}
+                      title={`:${emoji.name}:`}
+                    >
+                      <img
+                        src={emoji.url}
+                        alt={emoji.name}
+                        style={styles.emojiImage}
+                        loading="lazy"
+                      />
+                    </button>
+                  ))}
+                </div>
+              )}
 
-                {authState.team && (
-                  <div style={styles.teamBadge}>
-                    <div style={styles.teamDot} />
-                    <span style={styles.teamName}>{authState.team.name}</span>
-                  </div>
-                )}
-              </div>
-
-              <button
-                style={{
-                  ...styles.logoutButton,
-                  ...(logoutHover ? styles.logoutButtonHover : {}),
-                }}
-                onClick={handleLogout}
-                onMouseEnter={() => setLogoutHover(true)}
-                onMouseLeave={() => setLogoutHover(false)}
-              >
-                Sign out
-              </button>
+              {error && (
+                <div style={styles.error}>
+                  <span style={{ fontSize: "16px" }}>⚠️</span>
+                  <span style={styles.errorText}>{error}</span>
+                </div>
+              )}
             </div>
           ) : (
             <div style={styles.loginContent}>
