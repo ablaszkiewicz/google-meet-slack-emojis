@@ -469,14 +469,13 @@ function updateReactionsUI(messageId: string) {
 
 // Inject reaction button into a message
 function injectReactionButton(messageElement: Element) {
-  // Check if already injected
+  // Check if already injected in THIS element (DOM is authoritative - Google Meet may re-render)
   if (messageElement.querySelector(".meet-emoji-bar")) return;
 
   const messageId = messageElement.getAttribute("data-message-id");
   if (!messageId) return;
 
-  // Find the message text container - look for the div that contains the actual message text
-  // Based on the HTML structure: .ptNLrf contains the message content
+  // Find the message text container
   const messageContent = messageElement.querySelector('[jsname="dTKtvb"]');
   if (!messageContent) return;
 
@@ -502,31 +501,27 @@ function injectReactionButton(messageElement: Element) {
 
   // Insert the emoji bar after the message content
   messageContent.parentNode?.insertBefore(emojiBar, messageContent.nextSibling);
+
+  // Restore any existing reactions from memory
+  if (messageReactions.has(messageId)) {
+    updateReactionsUI(messageId);
+  }
 }
 
 // Process all existing messages
 function processExistingMessages() {
   const messages = document.querySelectorAll("[data-message-id]");
   messages.forEach((msg) => injectReactionButton(msg));
-  console.log(`[MeetEmoji] Processed ${messages.length} existing messages`);
 }
 
-// Watch for new messages
+// Watch for DOM changes and process messages SYNCHRONOUSLY
 function watchForMessages() {
-  const observer = new MutationObserver((mutations) => {
-    for (const mutation of mutations) {
-      for (const node of mutation.addedNodes) {
-        if (node instanceof Element) {
-          // Check if the node itself is a message
-          if (node.hasAttribute("data-message-id")) {
-            injectReactionButton(node);
-          }
-          // Check for messages within the added node
-          const messages = node.querySelectorAll("[data-message-id]");
-          messages.forEach((msg) => injectReactionButton(msg));
-        }
-      }
-    }
+  const observer = new MutationObserver(() => {
+    // Process ALL messages synchronously on any mutation
+    // This catches both new messages and re-renders of existing ones
+    // The check inside injectReactionButton is fast (querySelector stops at first match)
+    const messages = document.querySelectorAll("[data-message-id]");
+    messages.forEach((msg) => injectReactionButton(msg));
   });
 
   observer.observe(document.body, {
@@ -534,7 +529,7 @@ function watchForMessages() {
     subtree: true,
   });
 
-  console.log("[MeetEmoji] Watching for new messages");
+  console.log("[MeetEmoji] Watching for DOM changes (synchronous)");
 }
 
 // Initialize
@@ -552,14 +547,9 @@ async function init() {
   // Load emojis
   await loadEmojis();
 
-  // Process existing messages and watch for new ones
+  // Process existing messages and watch for DOM changes
   processExistingMessages();
   watchForMessages();
-
-  // Reprocess periodically in case messages load later
-  setInterval(() => {
-    processExistingMessages();
-  }, 2000);
 }
 
 // Run when DOM is ready
