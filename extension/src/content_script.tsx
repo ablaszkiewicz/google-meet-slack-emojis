@@ -16,40 +16,41 @@ let pickerElement: HTMLElement | null = null;
 function injectStyles() {
   const style = document.createElement("style");
   style.textContent = `
-    .meet-emoji-btn {
+    /* Emoji reaction bar - always visible under message */
+    .meet-emoji-bar {
       display: flex;
       align-items: center;
+      gap: 6px;
+      margin-top: 6px;
+      flex-wrap: wrap;
+    }
+
+    .meet-emoji-add-btn {
+      display: inline-flex;
+      align-items: center;
       justify-content: center;
-      width: 28px;
-      height: 28px;
-      border-radius: 50%;
-      border: none;
+      gap: 4px;
+      padding: 4px 10px;
+      border-radius: 14px;
+      border: 1px dashed rgba(255, 255, 255, 0.3);
       background: transparent;
       cursor: pointer;
-      opacity: 0;
       transition: all 0.2s ease;
-      margin-left: 4px;
-      flex-shrink: 0;
+      color: rgba(255, 255, 255, 0.6);
+      font-size: 12px;
+      font-family: inherit;
     }
 
-    .meet-emoji-btn:hover {
+    .meet-emoji-add-btn:hover {
       background: rgba(255, 255, 255, 0.1);
+      border-color: rgba(255, 255, 255, 0.5);
+      color: rgba(255, 255, 255, 0.9);
     }
 
-    .meet-emoji-btn svg {
-      width: 18px;
-      height: 18px;
-      fill: rgba(255, 255, 255, 0.7);
-    }
-
-    .meet-emoji-btn:hover svg {
-      fill: rgba(255, 255, 255, 1);
-    }
-
-    /* Show button on message hover */
-    [data-message-id]:hover .meet-emoji-btn,
-    .Ss4fHf:hover .meet-emoji-btn {
-      opacity: 1;
+    .meet-emoji-add-btn svg {
+      width: 14px;
+      height: 14px;
+      fill: currentColor;
     }
 
     /* Emoji picker */
@@ -183,15 +184,7 @@ function injectStyles() {
       font-size: 13px;
     }
 
-    /* Reactions container */
-    .meet-emoji-reactions {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 4px;
-      margin-top: 4px;
-      padding: 4px 0;
-    }
-
+    /* Individual reaction badge */
     .meet-emoji-reaction {
       display: flex;
       align-items: center;
@@ -437,73 +430,78 @@ function addReactionToMessage(
 
 // Update reactions UI for a message
 function updateReactionsUI(messageId: string) {
-  const messageElement = document.querySelector(
-    `[data-message-id="${messageId}"]`
+  // Find the emoji bar for this message
+  const emojiBar = document.querySelector(
+    `.meet-emoji-bar[data-for-message="${messageId}"]`
   );
-  if (!messageElement) return;
+  if (!emojiBar) return;
 
   const reactions = messageReactions.get(messageId);
+
+  // Remove existing reaction elements (but keep the add button)
+  emojiBar
+    .querySelectorAll(".meet-emoji-reaction")
+    .forEach((el) => el.remove());
+
   if (!reactions || reactions.size === 0) return;
 
-  // Find or create reactions container
-  let reactionsContainer = messageElement.querySelector(
-    ".meet-emoji-reactions"
-  ) as HTMLElement;
+  // Get the add button to insert reactions before it
+  const addBtn = emojiBar.querySelector(".meet-emoji-add-btn");
 
-  if (!reactionsContainer) {
-    reactionsContainer = document.createElement("div");
-    reactionsContainer.className = "meet-emoji-reactions";
+  // Add reaction elements
+  Array.from(reactions.entries()).forEach(([name, { url, count }]) => {
+    const reactionEl = document.createElement("div");
+    reactionEl.className = "meet-emoji-reaction";
+    reactionEl.title = `:${name}:`;
+    reactionEl.innerHTML = `
+      <img src="${url}" alt="${name}" />
+      <span class="meet-emoji-reaction-count">${count}</span>
+    `;
 
-    // Insert after the message content
-    const messageContent =
-      messageElement.querySelector(".ptNLrf") ||
-      messageElement.querySelector(".jO4O1");
-    if (messageContent) {
-      messageContent.appendChild(reactionsContainer);
+    // Insert before the add button
+    if (addBtn) {
+      emojiBar.insertBefore(reactionEl, addBtn);
+    } else {
+      emojiBar.appendChild(reactionEl);
     }
-  }
-
-  // Render reactions
-  reactionsContainer.innerHTML = Array.from(reactions.entries())
-    .map(
-      ([name, { url, count }]) => `
-      <div class="meet-emoji-reaction" title=":${name}:">
-        <img src="${url}" alt="${name}" />
-        <span class="meet-emoji-reaction-count">${count}</span>
-      </div>
-    `
-    )
-    .join("");
+  });
 }
 
 // Inject reaction button into a message
 function injectReactionButton(messageElement: Element) {
   // Check if already injected
-  if (messageElement.querySelector(".meet-emoji-btn")) return;
+  if (messageElement.querySelector(".meet-emoji-bar")) return;
 
   const messageId = messageElement.getAttribute("data-message-id");
   if (!messageId) return;
 
-  // Find the button container (where the pin button is)
-  const buttonContainer = messageElement.querySelector(".Sd72u");
-  if (!buttonContainer) return;
+  // Find the message text container - look for the div that contains the actual message text
+  // Based on the HTML structure: .ptNLrf contains the message content
+  const messageContent = messageElement.querySelector('[jsname="dTKtvb"]');
+  if (!messageContent) return;
 
-  // Create reaction button
-  const btn = document.createElement("button");
-  btn.className = "meet-emoji-btn";
-  btn.innerHTML = createReactionButtonSvg();
-  btn.title = "Add reaction";
-  btn.setAttribute("data-for-message", messageId);
+  // Create emoji bar container
+  const emojiBar = document.createElement("div");
+  emojiBar.className = "meet-emoji-bar";
+  emojiBar.setAttribute("data-for-message", messageId);
 
-  btn.addEventListener("click", (e) => {
+  // Create "Add reaction" button
+  const addBtn = document.createElement("button");
+  addBtn.className = "meet-emoji-add-btn";
+  addBtn.innerHTML = `${createReactionButtonSvg()} React`;
+  addBtn.title = "Add reaction";
+
+  addBtn.addEventListener("click", (e) => {
     e.stopPropagation();
     e.preventDefault();
-    const rect = btn.getBoundingClientRect();
+    const rect = addBtn.getBoundingClientRect();
     showPicker(messageId, rect.left, rect.bottom + 8);
   });
 
-  // Insert at the beginning of the button container
-  buttonContainer.insertBefore(btn, buttonContainer.firstChild);
+  emojiBar.appendChild(addBtn);
+
+  // Insert the emoji bar after the message content
+  messageContent.parentNode?.insertBefore(emojiBar, messageContent.nextSibling);
 }
 
 // Process all existing messages
