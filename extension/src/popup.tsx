@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
-import { AuthState, Message } from "./slack/types";
+import { AuthState, Message, MessageType } from "./slack/types";
 import type { SlackEmojiDto } from "./api/backendApiFacade";
 
 const styles = {
@@ -377,10 +377,10 @@ const Popup = () => {
 
   useEffect(() => {
     chrome.runtime.sendMessage(
-      { type: "SLACK_GET_AUTH_STATE" },
+      { type: MessageType.GetAuthState },
       (response: Message) => {
         setIsLoading(false);
-        if (response?.type === "SLACK_AUTH_STATE") {
+        if (response?.type === MessageType.AuthState) {
           setAuthState(response.payload);
         }
       }
@@ -398,14 +398,14 @@ const Popup = () => {
 
     setIsLoadingEmojis(true);
     chrome.runtime.sendMessage(
-      { type: "SLACK_GET_EMOJIS" },
+      { type: MessageType.GetEmojis },
       (response: Message) => {
         try {
-          if (response?.type === "SLACK_EMOJIS_SUCCESS") {
+          if (response?.type === MessageType.EmojisSuccess) {
             setEmojis(response.payload);
             return;
           }
-          if (response?.type === "SLACK_EMOJIS_ERROR") {
+          if (response?.type === MessageType.EmojisError) {
             setError(response.payload);
             return;
           }
@@ -422,13 +422,13 @@ const Popup = () => {
     setError(null);
 
     chrome.runtime.sendMessage(
-      { type: "SLACK_LOGIN" },
+      { type: MessageType.SlackLogin },
       (response: Message) => {
         setIsLoggingIn(false);
 
-        if (response?.type === "SLACK_AUTH_SUCCESS") {
+        if (response?.type === MessageType.SlackAuthSuccess) {
           setAuthState(response.payload);
-        } else if (response?.type === "SLACK_AUTH_ERROR") {
+        } else if (response?.type === MessageType.SlackAuthError) {
           setError(response.payload);
         }
       }
@@ -437,9 +437,9 @@ const Popup = () => {
 
   const handleLogout = () => {
     chrome.runtime.sendMessage(
-      { type: "SLACK_LOGOUT" },
+      { type: MessageType.Logout },
       (response: Message) => {
-        if (response?.type === "SLACK_AUTH_STATE") {
+        if (response?.type === MessageType.AuthState) {
           setAuthState(response.payload);
           setEmojis([]);
         }

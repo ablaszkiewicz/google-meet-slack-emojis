@@ -6,13 +6,25 @@ export interface AuthState {
   user: BackendUserDto | null;
 }
 
+export enum MessageType {
+  SlackLogin = "slack-login",
+  SlackAuthSuccess = "slack-auth-success",
+  SlackAuthError = "slack-auth-error",
+  Logout = "logout",
+  GetAuthState = "get-auth-state",
+  AuthState = "auth-state",
+  GetEmojis = "get-emojis",
+  EmojisSuccess = "emojis-success",
+  EmojisError = "emojis-error",
+}
+
 export type Message =
-  | { type: "SLACK_LOGIN" }
-  | { type: "SLACK_LOGOUT" }
-  | { type: "SLACK_GET_AUTH_STATE" }
-  | { type: "SLACK_GET_EMOJIS" }
-  | { type: "SLACK_AUTH_SUCCESS"; payload: AuthState }
-  | { type: "SLACK_AUTH_ERROR"; payload: string }
-  | { type: "SLACK_AUTH_STATE"; payload: AuthState }
-  | { type: "SLACK_EMOJIS_SUCCESS"; payload: SlackEmojiDto[] }
-  | { type: "SLACK_EMOJIS_ERROR"; payload: string };
+  | { type: MessageType.SlackLogin }
+  | { type: MessageType.Logout }
+  | { type: MessageType.GetAuthState }
+  | { type: MessageType.GetEmojis }
+  | { type: MessageType.SlackAuthSuccess; payload: AuthState }
+  | { type: MessageType.SlackAuthError; payload: string }
+  | { type: MessageType.AuthState; payload: AuthState }
+  | { type: MessageType.EmojisSuccess; payload: SlackEmojiDto[] }
+  | { type: MessageType.EmojisError; payload: string };

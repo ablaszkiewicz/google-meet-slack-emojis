@@ -1,5 +1,5 @@
 import { startOAuthFlow } from "./slack/auth";
-import { Message } from "./slack/types";
+import { Message, MessageType } from "./slack/types";
 import { Storage } from "./storage";
 import { BackendApiFacade } from "./api/backendApiFacade";
 
@@ -14,19 +14,19 @@ chrome.runtime.onMessage.addListener(
     console.log("[Background] Received message:", message);
 
     switch (message.type) {
-      case "SLACK_LOGIN":
+      case MessageType.SlackLogin:
         handleLogin(sendResponse);
         return true;
 
-      case "SLACK_LOGOUT":
+      case MessageType.Logout:
         handleLogout(sendResponse);
         return true;
 
-      case "SLACK_GET_AUTH_STATE":
+      case MessageType.GetAuthState:
         handleGetAuthState(sendResponse);
         return true;
 
-      case "SLACK_GET_EMOJIS":
+      case MessageType.GetEmojis:
         handleGetEmojis(sendResponse);
         return true;
 
@@ -42,13 +42,13 @@ async function handleLogin(sendResponse: (response: Message) => void) {
     const authState = await startOAuthFlow();
     console.log("[Background] OAuth success:", authState);
     sendResponse({
-      type: "SLACK_AUTH_SUCCESS",
+      type: MessageType.SlackAuthSuccess,
       payload: authState,
     });
   } catch (error) {
     console.error("[Background] OAuth error:", error);
     sendResponse({
-      type: "SLACK_AUTH_ERROR",
+      type: MessageType.SlackAuthError,
       payload:
         error instanceof Error ? error.message : "Unknown error occurred",
     });
@@ -59,7 +59,7 @@ async function handleLogout(sendResponse: (response: Message) => void) {
   try {
     await Storage.clearAuthState();
     sendResponse({
-      type: "SLACK_AUTH_STATE",
+      type: MessageType.AuthState,
       payload: {
         isAuthenticated: false,
         token: null,
@@ -68,7 +68,7 @@ async function handleLogout(sendResponse: (response: Message) => void) {
     });
   } catch (error) {
     sendResponse({
-      type: "SLACK_AUTH_ERROR",
+      type: MessageType.SlackAuthError,
       payload:
         error instanceof Error ? error.message : "Unknown error occurred",
     });
@@ -79,12 +79,12 @@ async function handleGetAuthState(sendResponse: (response: Message) => void) {
   try {
     const authState = await Storage.getAuthState();
     sendResponse({
-      type: "SLACK_AUTH_STATE",
+      type: MessageType.AuthState,
       payload: authState,
     });
   } catch (error) {
     sendResponse({
-      type: "SLACK_AUTH_ERROR",
+      type: MessageType.SlackAuthError,
       payload:
         error instanceof Error ? error.message : "Unknown error occurred",
     });
@@ -98,13 +98,13 @@ async function handleGetEmojis(sendResponse: (response: Message) => void) {
     console.log(`[Background] Fetched ${emojiList.length} emojis`);
 
     sendResponse({
-      type: "SLACK_EMOJIS_SUCCESS",
+      type: MessageType.EmojisSuccess,
       payload: emojiList,
     });
   } catch (error) {
     console.error("[Background] Error fetching emojis:", error);
     sendResponse({
-      type: "SLACK_EMOJIS_ERROR",
+      type: MessageType.EmojisError,
       payload:
         error instanceof Error ? error.message : "Failed to fetch emojis",
     });

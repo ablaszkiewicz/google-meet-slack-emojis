@@ -1,22 +1,18 @@
-// Content script for Google Meet emoji reactions
+import { MessageType } from "./slack/types";
 console.log("[MeetEmoji] Content script loaded on Google Meet");
 
-// Emoji interface
 interface SlackEmoji {
   name: string;
   url: string;
 }
 
-// State
 let emojis: SlackEmoji[] = [];
 let currentPickerMessageId: string | null = null;
 let pickerElement: HTMLElement | null = null;
 
-// Inject styles
 function injectStyles() {
   const style = document.createElement("style");
   style.textContent = `
-    /* Emoji reaction bar - always visible under message */
     .meet-emoji-bar {
       display: flex;
       align-items: center;
@@ -53,7 +49,6 @@ function injectStyles() {
       fill: currentColor;
     }
 
-    /* Emoji picker */
     .meet-emoji-picker {
       position: fixed;
       width: 320px;
@@ -184,7 +179,6 @@ function injectStyles() {
       font-size: 13px;
     }
 
-    /* Individual reaction badge */
     .meet-emoji-reaction {
       display: flex;
       align-items: center;
@@ -216,12 +210,11 @@ function injectStyles() {
   document.head.appendChild(style);
 }
 
-// Load emojis via background script (to avoid CORS issues)
 async function loadEmojis(): Promise<void> {
   return new Promise((resolve) => {
     console.log("[MeetEmoji] Requesting emojis from background script...");
 
-    chrome.runtime.sendMessage({ type: "SLACK_GET_EMOJIS" }, (response) => {
+    chrome.runtime.sendMessage({ type: MessageType.GetEmojis }, (response) => {
       console.log("[MeetEmoji] Got response from background:", response);
 
       if (chrome.runtime.lastError) {
@@ -236,10 +229,10 @@ async function loadEmojis(): Promise<void> {
         return;
       }
 
-      if (response.type === "SLACK_EMOJIS_SUCCESS") {
+      if (response.type === MessageType.EmojisSuccess) {
         emojis = response.payload;
         console.log(`[MeetEmoji] Loaded ${emojis.length} emojis`);
-      } else if (response.type === "SLACK_EMOJIS_ERROR") {
+      } else if (response.type === MessageType.EmojisError) {
         console.error("[MeetEmoji] Error:", response.payload);
       }
 
@@ -248,14 +241,12 @@ async function loadEmojis(): Promise<void> {
   });
 }
 
-// Create reaction button SVG
 function createReactionButtonSvg(): string {
   return `<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
     <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-4-8c.79 0 1.5-.71 1.5-1.5S8.79 9 8 9s-1.5.71-1.5 1.5S7.21 12 8 12zm8 0c.79 0 1.5-.71 1.5-1.5S16.79 9 16 9s-1.5.71-1.5 1.5.71 1.5 1.5 1.5zm-4 5.5c2.33 0 4.31-1.46 5.11-3.5H6.89c.8 2.04 2.78 3.5 5.11 3.5z"/>
   </svg>`;
 }
 
-// Create emoji picker
 function createEmojiPicker(): HTMLElement {
   const picker = document.createElement("div");
   picker.className = "meet-emoji-picker";
@@ -268,14 +259,12 @@ function createEmojiPicker(): HTMLElement {
     <div class="meet-emoji-picker-grid"></div>
   `;
 
-  // Close button
   picker
     .querySelector(".meet-emoji-picker-close")
     ?.addEventListener("click", () => {
       closePicker();
     });
 
-  // Search functionality
   const searchInput = picker.querySelector(
     ".meet-emoji-picker-search"
   ) as HTMLInputElement;
@@ -283,7 +272,6 @@ function createEmojiPicker(): HTMLElement {
     renderEmojisInPicker(picker, searchInput.value);
   });
 
-  // Prevent clicks inside picker from closing it
   picker.addEventListener("click", (e) => {
     e.stopPropagation();
   });
@@ -291,7 +279,6 @@ function createEmojiPicker(): HTMLElement {
   return picker;
 }
 
-// Render emojis in picker
 function renderEmojisInPicker(picker: HTMLElement, searchTerm: string = "") {
   const grid = picker.querySelector(".meet-emoji-picker-grid");
   if (!grid) return;
@@ -320,7 +307,6 @@ function renderEmojisInPicker(picker: HTMLElement, searchTerm: string = "") {
     )
     .join("");
 
-  // Add click handlers
   grid.querySelectorAll(".meet-emoji-picker-item").forEach((item) => {
     item.addEventListener("click", () => {
       const emojiName = item.getAttribute("data-emoji-name");
@@ -333,15 +319,13 @@ function renderEmojisInPicker(picker: HTMLElement, searchTerm: string = "") {
   });
 }
 
-// Show picker at position
 function showPicker(messageId: string, x: number, y: number) {
-  closePicker(); // Close any existing picker
+  closePicker();
 
   currentPickerMessageId = messageId;
   pickerElement = createEmojiPicker();
   document.body.appendChild(pickerElement);
 
-  // Position the picker
   const pickerRect = pickerElement.getBoundingClientRect();
   const windowWidth = window.innerWidth;
   const windowHeight = window.innerHeight;
@@ -349,7 +333,6 @@ function showPicker(messageId: string, x: number, y: number) {
   let left = x;
   let top = y;
 
-  // Adjust if goes off screen
   if (left + pickerRect.width > windowWidth) {
     left = windowWidth - pickerRect.width - 16;
   }
@@ -360,22 +343,18 @@ function showPicker(messageId: string, x: number, y: number) {
   pickerElement.style.left = `${Math.max(16, left)}px`;
   pickerElement.style.top = `${Math.max(16, top)}px`;
 
-  // Render emojis
   renderEmojisInPicker(pickerElement);
 
-  // Focus search input
   const searchInput = pickerElement.querySelector(
     ".meet-emoji-picker-search"
   ) as HTMLInputElement;
   setTimeout(() => searchInput?.focus(), 100);
 
-  // Close on outside click
   setTimeout(() => {
     document.addEventListener("click", handleOutsideClick);
   }, 0);
 }
 
-// Close picker
 function closePicker() {
   if (pickerElement) {
     pickerElement.remove();
@@ -385,20 +364,17 @@ function closePicker() {
   document.removeEventListener("click", handleOutsideClick);
 }
 
-// Handle outside click
 function handleOutsideClick(e: MouseEvent) {
   if (pickerElement && !pickerElement.contains(e.target as Node)) {
     closePicker();
   }
 }
 
-// Store for reactions (in-memory for now, keyed by message ID)
 const messageReactions = new Map<
   string,
   Map<string, { url: string; count: number }>
 >();
 
-// Add reaction to message
 function addReactionToMessage(
   messageId: string,
   emojiName: string,
@@ -408,7 +384,6 @@ function addReactionToMessage(
     `[MeetEmoji] Adding reaction :${emojiName}: to message ${messageId}`
   );
 
-  // Get or create reactions for this message
   if (!messageReactions.has(messageId)) {
     messageReactions.set(messageId, new Map());
   }
@@ -416,21 +391,16 @@ function addReactionToMessage(
   const reactions = messageReactions.get(messageId)!;
 
   if (reactions.has(emojiName)) {
-    // Increment count
     const reaction = reactions.get(emojiName)!;
     reaction.count++;
   } else {
-    // Add new reaction
     reactions.set(emojiName, { url: emojiUrl, count: 1 });
   }
 
-  // Update UI
   updateReactionsUI(messageId);
 }
 
-// Update reactions UI for a message
 function updateReactionsUI(messageId: string) {
-  // Find the emoji bar for this message
   const emojiBar = document.querySelector(
     `.meet-emoji-bar[data-for-message="${messageId}"]`
   );
@@ -438,17 +408,14 @@ function updateReactionsUI(messageId: string) {
 
   const reactions = messageReactions.get(messageId);
 
-  // Remove existing reaction elements (but keep the add button)
   emojiBar
     .querySelectorAll(".meet-emoji-reaction")
     .forEach((el) => el.remove());
 
   if (!reactions || reactions.size === 0) return;
 
-  // Get the add button to insert reactions before it
   const addBtn = emojiBar.querySelector(".meet-emoji-add-btn");
 
-  // Add reaction elements
   Array.from(reactions.entries()).forEach(([name, { url, count }]) => {
     const reactionEl = document.createElement("div");
     reactionEl.className = "meet-emoji-reaction";
@@ -458,7 +425,6 @@ function updateReactionsUI(messageId: string) {
       <span class="meet-emoji-reaction-count">${count}</span>
     `;
 
-    // Insert before the add button
     if (addBtn) {
       emojiBar.insertBefore(reactionEl, addBtn);
     } else {
@@ -467,24 +433,19 @@ function updateReactionsUI(messageId: string) {
   });
 }
 
-// Inject reaction button into a message
 function injectReactionButton(messageElement: Element) {
-  // Check if already injected in THIS element (DOM is authoritative - Google Meet may re-render)
   if (messageElement.querySelector(".meet-emoji-bar")) return;
 
   const messageId = messageElement.getAttribute("data-message-id");
   if (!messageId) return;
 
-  // Find the message text container
   const messageContent = messageElement.querySelector('[jsname="dTKtvb"]');
   if (!messageContent) return;
 
-  // Create emoji bar container
   const emojiBar = document.createElement("div");
   emojiBar.className = "meet-emoji-bar";
   emojiBar.setAttribute("data-for-message", messageId);
 
-  // Create "Add reaction" button
   const addBtn = document.createElement("button");
   addBtn.className = "meet-emoji-add-btn";
   addBtn.innerHTML = `${createReactionButtonSvg()} React`;
@@ -499,27 +460,20 @@ function injectReactionButton(messageElement: Element) {
 
   emojiBar.appendChild(addBtn);
 
-  // Insert the emoji bar after the message content
   messageContent.parentNode?.insertBefore(emojiBar, messageContent.nextSibling);
 
-  // Restore any existing reactions from memory
   if (messageReactions.has(messageId)) {
     updateReactionsUI(messageId);
   }
 }
 
-// Process all existing messages
 function processExistingMessages() {
   const messages = document.querySelectorAll("[data-message-id]");
   messages.forEach((msg) => injectReactionButton(msg));
 }
 
-// Watch for DOM changes and process messages SYNCHRONOUSLY
 function watchForMessages() {
   const observer = new MutationObserver(() => {
-    // Process ALL messages synchronously on any mutation
-    // This catches both new messages and re-renders of existing ones
-    // The check inside injectReactionButton is fast (querySelector stops at first match)
     const messages = document.querySelectorAll("[data-message-id]");
     messages.forEach((msg) => injectReactionButton(msg));
   });
@@ -532,27 +486,21 @@ function watchForMessages() {
   console.log("[MeetEmoji] Watching for DOM changes (synchronous)");
 }
 
-// Initialize
 async function init() {
-  // Only run on Google Meet
   if (!window.location.hostname.includes("meet.google.com")) {
     return;
   }
 
   console.log("[MeetEmoji] Initializing on Google Meet");
 
-  // Inject styles
   injectStyles();
 
-  // Load emojis
   await loadEmojis();
 
-  // Process existing messages and watch for DOM changes
   processExistingMessages();
   watchForMessages();
 }
 
-// Run when DOM is ready
 if (document.readyState === "loading") {
   document.addEventListener("DOMContentLoaded", init);
 } else {
