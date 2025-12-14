@@ -28,19 +28,19 @@ function injectStyles() {
       gap: 4px;
       padding: 4px 10px;
       border-radius: 14px;
-      border: 1px dashed rgba(255, 255, 255, 0.3);
+      border: 1px dashed rgba(250, 250, 250, 0.22);
       background: transparent;
       cursor: pointer;
       transition: all 0.2s ease;
-      color: rgba(255, 255, 255, 0.6);
+      color: rgba(250, 250, 250, 0.8);
       font-size: 12px;
       font-family: inherit;
     }
 
     .meet-emoji-add-btn:hover {
-      background: rgba(255, 255, 255, 0.1);
-      border-color: rgba(255, 255, 255, 0.5);
-      color: rgba(255, 255, 255, 0.9);
+      background: rgba(250, 250, 250, 0.08) !important;
+      border-color: rgba(250, 250, 250, 0.28) !important;
+      color: #fafafa !important;
     }
 
     .meet-emoji-add-btn svg {
@@ -53,27 +53,28 @@ function injectStyles() {
       position: fixed;
       width: 320px;
       max-height: 400px;
-      background: linear-gradient(145deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      background: #141619;
       border-radius: 12px;
-      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.55);
       z-index: 999999;
       display: flex;
       flex-direction: column;
       overflow: hidden;
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+      border: 1px solid rgba(250, 250, 250, 0.12);
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     }
 
     .meet-emoji-picker-header {
       padding: 12px 16px;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      background: #232529;
+      border-bottom: 1px solid rgba(250, 250, 250, 0.12);
       display: flex;
       align-items: center;
       justify-content: space-between;
     }
 
     .meet-emoji-picker-title {
-      color: #fff;
+      color: #fafafa;
       font-size: 14px;
       font-weight: 600;
     }
@@ -82,29 +83,29 @@ function injectStyles() {
       width: 24px;
       height: 24px;
       border: none;
-      background: rgba(255, 255, 255, 0.1);
+      background: #1b1d21;
       border-radius: 50%;
       cursor: pointer;
       display: flex;
       align-items: center;
       justify-content: center;
-      color: rgba(255, 255, 255, 0.7);
+      color: rgba(250, 250, 250, 0.7);
       font-size: 16px;
       line-height: 1;
     }
 
     .meet-emoji-picker-close:hover {
-      background: rgba(255, 82, 82, 0.3);
-      color: #ff5252;
+      background: rgba(250, 250, 250, 0.08);
+      color: #fafafa;
     }
 
     .meet-emoji-picker-search {
       margin: 12px;
       padding: 10px 14px;
-      background: rgba(255, 255, 255, 0.08);
-      border: 1px solid rgba(255, 255, 255, 0.15);
+      background: #1b1d21;
+      border: 1px solid rgba(250, 250, 250, 0.12);
       border-radius: 8px;
-      color: #fff;
+      color: #fafafa;
       font-size: 13px;
       outline: none;
       width: calc(100% - 24px);
@@ -112,7 +113,7 @@ function injectStyles() {
     }
 
     .meet-emoji-picker-search::placeholder {
-      color: rgba(255, 255, 255, 0.4);
+      color: rgba(250, 250, 250, 0.45);
     }
 
     .meet-emoji-picker-grid {
@@ -123,6 +124,7 @@ function injectStyles() {
       overflow-y: auto;
       flex: 1;
       max-height: 280px;
+      background: #1b1d21;
     }
 
     .meet-emoji-picker-grid::-webkit-scrollbar {
@@ -130,12 +132,12 @@ function injectStyles() {
     }
 
     .meet-emoji-picker-grid::-webkit-scrollbar-track {
-      background: rgba(255, 255, 255, 0.05);
+      background: #141619;
       border-radius: 3px;
     }
 
     .meet-emoji-picker-grid::-webkit-scrollbar-thumb {
-      background: rgba(255, 255, 255, 0.2);
+      background: rgba(250, 250, 250, 0.2);
       border-radius: 3px;
     }
 
@@ -147,14 +149,14 @@ function injectStyles() {
       border-radius: 8px;
       cursor: pointer;
       background: transparent;
-      border: none;
+      border: 1px solid transparent;
       padding: 6px;
       transition: all 0.15s ease;
     }
 
     .meet-emoji-picker-item:hover {
-      background: rgba(255, 255, 255, 0.15);
-      transform: scale(1.1);
+      background: #232529;
+      border: 1px solid rgba(250, 250, 250, 0.18);
     }
 
     .meet-emoji-picker-item img {
@@ -168,14 +170,14 @@ function injectStyles() {
     .meet-emoji-picker-empty {
       padding: 24px;
       text-align: center;
-      color: rgba(255, 255, 255, 0.5);
+      color: rgba(250, 250, 250, 0.6);
       font-size: 13px;
     }
 
     .meet-emoji-picker-loading {
       padding: 24px;
       text-align: center;
-      color: rgba(255, 255, 255, 0.5);
+      color: rgba(250, 250, 250, 0.6);
       font-size: 13px;
     }
 
@@ -183,16 +185,17 @@ function injectStyles() {
       display: flex;
       align-items: center;
       gap: 4px;
-      padding: 2px 8px 2px 4px;
-      background: rgba(255, 255, 255, 0.1);
+      padding: 2px 12px 2px 6px;
+      background: rgba(250, 250, 250, 0.08);
       border-radius: 12px;
-      border: 1px solid rgba(255, 255, 255, 0.15);
+      border: 1px solid transparent;
       cursor: default;
       transition: all 0.2s ease;
     }
 
     .meet-emoji-reaction:hover {
-      background: rgba(255, 255, 255, 0.15);
+      background: rgba(250, 250, 250, 0.12);
+      border-color: rgba(250, 250, 250, 0.18);
     }
 
     .meet-emoji-reaction img {
@@ -203,7 +206,7 @@ function injectStyles() {
 
     .meet-emoji-reaction-count {
       font-size: 11px;
-      color: rgba(255, 255, 255, 0.8);
+      color: rgba(250, 250, 250, 0.85);
       font-weight: 500;
     }
   `;

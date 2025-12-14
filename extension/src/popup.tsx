@@ -9,23 +9,24 @@ const styles = {
   container: {
     width: "340px",
     height: "600px",
-    background:
-      "linear-gradient(145deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)",
-    fontFamily: "'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif",
-    color: "#ffffff",
+    background: "#141619",
+    fontFamily:
+      'ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+    color: "#fafafa",
     padding: "0",
     margin: "0",
     overflow: "hidden",
     display: "flex",
     flexDirection: "column" as const,
     boxSizing: "border-box" as const,
+    border: "1px solid #27272a",
+    boxShadow: "0 12px 40px rgba(0,0,0,0.55)",
   } as React.CSSProperties,
 
   header: {
-    background: "rgba(255, 255, 255, 0.05)",
-    backdropFilter: "blur(10px)",
-    padding: "16px 20px",
-    borderBottom: "1px solid rgba(255, 255, 255, 0.1)",
+    background: "#232529",
+    padding: "14px 16px",
+    borderBottom: "1px solid #27272a",
     display: "flex",
     alignItems: "center",
     gap: "12px",
@@ -35,13 +36,13 @@ const styles = {
   logo: {
     width: "32px",
     height: "32px",
-    background: "linear-gradient(135deg, #00d4aa 0%, #00b894 100%)",
-    borderRadius: "8px",
+    background: "#18181b",
+    borderRadius: "10px",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
     fontSize: "16px",
-    boxShadow: "0 4px 15px rgba(0, 212, 170, 0.3)",
+    border: "1px solid #27272a",
   } as React.CSSProperties,
 
   headerText: {
@@ -59,7 +60,7 @@ const styles = {
 
   subtitle: {
     fontSize: "11px",
-    color: "rgba(255, 255, 255, 0.6)",
+    color: "rgba(250, 250, 250, 0.6)",
     margin: "2px 0 0 0",
   } as React.CSSProperties,
 
@@ -70,7 +71,7 @@ const styles = {
     objectFit: "cover" as const,
     cursor: "pointer",
     transition: "all 0.2s ease",
-    border: "2px solid rgba(255, 255, 255, 0.2)",
+    border: "1px solid #27272a",
     flexShrink: 0,
   } as React.CSSProperties,
 
@@ -94,6 +95,7 @@ const styles = {
     flexDirection: "column" as const,
     alignItems: "center",
     justifyContent: "center",
+    gap: "14px",
     padding: "16px",
     width: "100%",
     boxSizing: "border-box" as const,
@@ -117,8 +119,8 @@ const styles = {
   namePane: {
     height: "76px",
     padding: "10px 16px 8px",
-    borderTop: "1px solid rgba(255, 255, 255, 0.1)",
-    background: "rgba(255, 255, 255, 0.03)",
+    borderTop: "1px solid #27272a",
+    background: "#232529",
     display: "flex",
     flexDirection: "column" as const,
     justifyContent: "flex-start",
@@ -136,13 +138,13 @@ const styles = {
 
   nameLabel: {
     fontSize: "12px",
-    color: "rgba(255, 255, 255, 0.6)",
+    color: "rgba(250, 250, 250, 0.6)",
   } as React.CSSProperties,
 
   nameValue: {
     fontSize: "15px",
     fontWeight: 600,
-    color: "rgba(255, 255, 255, 0.95)",
+    color: "#fafafa",
     overflow: "hidden",
     textOverflow: "ellipsis",
     whiteSpace: "nowrap" as const,
@@ -159,8 +161,8 @@ const styles = {
     width: "32px",
     height: "32px",
     borderRadius: "10px",
-    border: "1px solid rgba(255, 255, 255, 0.15)",
-    background: "rgba(255, 255, 255, 0.05)",
+    border: "1px solid #27272a",
+    background: "#18181b",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
@@ -169,13 +171,13 @@ const styles = {
   } as React.CSSProperties,
 
   iconButtonPrimary: {
-    background: "rgba(0, 212, 170, 0.18)",
-    border: "1px solid rgba(0, 212, 170, 0.35)",
+    background: "#fafafa",
+    border: "1px solid #fafafa",
   } as React.CSSProperties,
 
   iconButtonDanger: {
-    background: "rgba(255, 82, 82, 0.14)",
-    border: "1px solid rgba(255, 82, 82, 0.32)",
+    background: "#18181b",
+    border: "1px solid #27272a",
   } as React.CSSProperties,
 
   rightControls: {
@@ -188,9 +190,9 @@ const styles = {
     flex: 1,
     padding: "10px 12px",
     borderRadius: "10px",
-    border: "1px solid rgba(255, 255, 255, 0.15)",
-    background: "rgba(0, 0, 0, 0.25)",
-    color: "#ffffff",
+    border: "1px solid #27272a",
+    background: "#09090b",
+    color: "#fafafa",
     fontSize: "14px",
     outline: "none",
     boxSizing: "border-box" as const,
@@ -198,37 +200,31 @@ const styles = {
 
   loginContent: {
     textAlign: "center" as const,
-    animation: "fadeIn 0.3s ease",
   } as React.CSSProperties,
 
   slackIcon: {
     width: "80px",
     height: "80px",
     margin: "0 auto 24px",
-    background:
-      "linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%)",
-    borderRadius: "20px",
+    background: "#0b0b0c",
+    borderRadius: "18px",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    boxShadow:
-      "0 8px 32px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255,255,255,0.1)",
-    border: "1px solid rgba(255, 255, 255, 0.1)",
+    border: "1px solid #27272a",
+    boxShadow: "0 12px 40px rgba(0,0,0,0.55)",
   } as React.CSSProperties,
 
   welcomeTitle: {
     fontSize: "22px",
     fontWeight: 600,
     marginBottom: "8px",
-    background: "linear-gradient(135deg, #ffffff 0%, #a8dadc 100%)",
-    WebkitBackgroundClip: "text",
-    WebkitTextFillColor: "transparent",
-    backgroundClip: "text",
+    color: "#fafafa",
   } as React.CSSProperties,
 
   welcomeText: {
     fontSize: "14px",
-    color: "rgba(255, 255, 255, 0.65)",
+    color: "rgba(250, 250, 250, 0.65)",
     marginBottom: "32px",
     lineHeight: 1.5,
     maxWidth: "260px",
@@ -241,22 +237,22 @@ const styles = {
     gap: "12px",
     width: "100%",
     padding: "14px 24px",
-    background: "#4A154B",
-    border: "none",
+    background: "#fafafa",
+    border: "1px solid #fafafa",
     borderRadius: "12px",
-    color: "#ffffff",
+    color: "#09090b",
     fontSize: "15px",
     fontWeight: 600,
     cursor: "pointer",
     transition: "all 0.2s ease",
-    boxShadow: "0 4px 20px rgba(74, 21, 75, 0.4)",
+    boxShadow: "0 12px 40px rgba(0,0,0,0.55)",
     letterSpacing: "0.3px",
   } as React.CSSProperties,
 
   slackButtonHover: {
-    background: "#611f69",
+    background: "rgba(250,250,250,0.9)",
     transform: "translateY(-2px)",
-    boxShadow: "0 6px 25px rgba(74, 21, 75, 0.5)",
+    boxShadow: "0 14px 46px rgba(0,0,0,0.6)",
   } as React.CSSProperties,
 
   emojiContent: {
@@ -264,7 +260,6 @@ const styles = {
     height: "100%",
     display: "flex",
     flexDirection: "column" as const,
-    animation: "fadeIn 0.3s ease",
     overflow: "hidden",
     boxSizing: "border-box" as const,
   } as React.CSSProperties,
@@ -280,24 +275,25 @@ const styles = {
   emojiTitle: {
     fontSize: "13px",
     fontWeight: 600,
-    color: "rgba(255, 255, 255, 0.9)",
+    color: "#fafafa",
   } as React.CSSProperties,
 
   emojiCount: {
     fontSize: "12px",
-    color: "rgba(255, 255, 255, 0.5)",
-    background: "rgba(255, 255, 255, 0.1)",
+    color: "rgba(250, 250, 250, 0.65)",
+    background: "#18181b",
     padding: "4px 10px",
     borderRadius: "12px",
+    border: "1px solid #27272a",
   } as React.CSSProperties,
 
   emojiSearch: {
     width: "100%",
     padding: "10px 14px",
-    background: "rgba(255, 255, 255, 0.08)",
-    border: "1px solid rgba(255, 255, 255, 0.15)",
+    background: "#09090b",
+    border: "1px solid #27272a",
     borderRadius: "10px",
-    color: "#ffffff",
+    color: "#fafafa",
     fontSize: "13px",
     marginBottom: "12px",
     outline: "none",
@@ -313,8 +309,9 @@ const styles = {
     overflowX: "hidden" as const,
     flex: 1,
     padding: "8px",
-    background: "rgba(0, 0, 0, 0.2)",
+    background: "#1b1d21",
     borderRadius: "12px",
+    border: "1px solid #27272a",
     boxSizing: "border-box" as const,
   } as React.CSSProperties,
 
@@ -327,14 +324,14 @@ const styles = {
     cursor: "pointer",
     transition: "all 0.15s ease",
     background: "transparent",
-    border: "none",
+    border: "1px solid transparent",
     padding: "4px",
     minWidth: 0,
   } as React.CSSProperties,
 
   emojiItemHover: {
-    background: "rgba(255, 255, 255, 0.15)",
-    transform: "scale(1.1)",
+    background: "#18181b",
+    border: "1px solid rgba(250,250,250,0.18)",
   } as React.CSSProperties,
 
   emojiImage: {
@@ -355,20 +352,29 @@ const styles = {
   spinner: {
     width: "40px",
     height: "40px",
-    border: "3px solid rgba(255, 255, 255, 0.1)",
-    borderTop: "3px solid #00d4aa",
+    border: "3px solid rgba(250, 250, 250, 0.12)",
+    borderTop: "3px solid #fafafa",
+    borderRadius: "50%",
+    animation: "spin 1s linear infinite",
+  } as React.CSSProperties,
+
+  smallSpinner: {
+    width: "16px",
+    height: "16px",
+    border: "2px solid rgba(9, 9, 11, 0.25)",
+    borderTop: "2px solid #09090b",
     borderRadius: "50%",
     animation: "spin 1s linear infinite",
   } as React.CSSProperties,
 
   loadingText: {
     fontSize: "14px",
-    color: "rgba(255, 255, 255, 0.6)",
+    color: "rgba(250, 250, 250, 0.65)",
   } as React.CSSProperties,
 
   error: {
-    background: "rgba(255, 82, 82, 0.15)",
-    border: "1px solid rgba(255, 82, 82, 0.3)",
+    background: "rgba(250, 250, 250, 0.04)",
+    border: "1px solid #27272a",
     borderRadius: "10px",
     padding: "12px 16px",
     marginTop: "16px",
@@ -379,7 +385,7 @@ const styles = {
 
   errorText: {
     fontSize: "13px",
-    color: "#ff8a8a",
+    color: "rgba(250, 250, 250, 0.75)",
     lineHeight: 1.4,
   } as React.CSSProperties,
 
@@ -398,11 +404,6 @@ const styles = {
 const styleSheet = `
   *, *::before, *::after {
     box-sizing: border-box;
-  }
-
-  @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(10px); }
-    to { opacity: 1; transform: translateY(0); }
   }
   
   @keyframes spin {
@@ -615,9 +616,8 @@ const Popup = () => {
       <style>{styleSheet}</style>
       <div style={styles.container}>
         <header style={styles.header}>
-          <div style={styles.logo}>🎯</div>
           <div style={styles.headerText}>
-            <h1 style={styles.title}>Meet Emoji Reactions</h1>
+            <h1 style={styles.title}>Google meet slack emojis</h1>
             <p style={styles.subtitle}>
               {authState.isAuthenticated && authState.user?.slackTeamName
                 ? authState.user.slackTeamName
@@ -638,8 +638,8 @@ const Popup = () => {
               <div
                 style={{
                   ...styles.userAvatar,
-                  background:
-                    "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                  background: "#18181b",
+                  border: "1px solid #27272a",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
@@ -751,21 +751,25 @@ const Popup = () => {
                           disabled={isSavingName}
                           title="Save"
                         >
-                          <svg
-                            width="16"
-                            height="16"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            xmlns="http://www.w3.org/2000/svg"
-                          >
-                            <path
-                              d="M20 6L9 17l-5-5"
-                              stroke="rgba(255,255,255,0.9)"
-                              strokeWidth="2"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                            />
-                          </svg>
+                          {isSavingName ? (
+                            <div style={styles.smallSpinner} />
+                          ) : (
+                            <svg
+                              width="16"
+                              height="16"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              xmlns="http://www.w3.org/2000/svg"
+                            >
+                              <path
+                                d="M20 6L9 17l-5-5"
+                                stroke="#09090b"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              />
+                            </svg>
+                          )}
                         </button>
                         <button
                           type="button"
@@ -789,13 +793,13 @@ const Popup = () => {
                           >
                             <path
                               d="M18 6L6 18"
-                              stroke="rgba(255,255,255,0.9)"
+                              stroke="rgba(250,250,250,0.9)"
                               strokeWidth="2"
                               strokeLinecap="round"
                             />
                             <path
                               d="M6 6l12 12"
-                              stroke="rgba(255,255,255,0.9)"
+                              stroke="rgba(250,250,250,0.9)"
                               strokeWidth="2"
                               strokeLinecap="round"
                             />
