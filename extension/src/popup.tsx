@@ -851,9 +851,6 @@ const Popup = () => {
           ) : (
             <div style={styles.centeredContent}>
               <div style={styles.loginContent}>
-                <div style={styles.slackIcon}>
-                  <SlackLogo size={44} />
-                </div>
                 <h2 style={styles.welcomeTitle}>Welcome!</h2>
                 <p style={styles.welcomeText}>
                   Connect your Slack workspace to react with emojis during

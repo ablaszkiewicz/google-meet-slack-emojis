@@ -20,4 +20,3 @@ export class MeetingReactionEvent {
   emojiUrl: string;
   user: IUser;
 }
-
