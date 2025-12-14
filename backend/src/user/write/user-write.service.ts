@@ -1,6 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
-import { Model, Types } from "mongoose";
+import { Model } from "mongoose";
 import { UserEntity } from "../core/entities/user.entity";
 import { IUser } from "../core/entities/user.interface";
 import { UpsertUserDto } from "./dto/upsert-slack-user.dto";
@@ -45,5 +45,11 @@ export class UserWriteService {
     }
 
     return UserEntity.mapToInterface(user);
+  }
+
+  public async updateName(userId: string, name: string): Promise<IUser | null> {
+    await this.userModel.updateOne({ _id: userId }, { $set: { name } }).exec();
+    const user = await this.userModel.findById(userId).lean<UserEntity>().exec();
+    return user ? UserEntity.mapToInterface(user) : null;
   }
 }

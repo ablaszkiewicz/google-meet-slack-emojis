@@ -1,13 +1,14 @@
 import React, { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { AuthState, Message, MessageType } from "./slack/types";
+import { BackendApiFacade } from "./api/backendApiFacade";
 import type { SlackEmojiDto } from "./api/backendApiFacade";
+import { Storage } from "./storage";
 
 const styles = {
   container: {
     width: "340px",
-    minHeight: "400px",
-    maxHeight: "600px",
+    height: "600px",
     background:
       "linear-gradient(145deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)",
     fontFamily: "'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif",
@@ -79,15 +80,120 @@ const styles = {
   } as React.CSSProperties,
 
   content: {
-    padding: "16px",
     display: "flex",
     flexDirection: "column" as const,
-    alignItems: "center",
-    justifyContent: "center",
     flex: 1,
     overflow: "hidden",
     boxSizing: "border-box" as const,
     width: "100%",
+  } as React.CSSProperties,
+
+  centeredContent: {
+    flex: 1,
+    display: "flex",
+    flexDirection: "column" as const,
+    alignItems: "center",
+    justifyContent: "center",
+    padding: "16px",
+    width: "100%",
+    boxSizing: "border-box" as const,
+  } as React.CSSProperties,
+
+  authenticatedLayout: {
+    flex: 1,
+    display: "flex",
+    flexDirection: "column" as const,
+    width: "100%",
+    overflow: "hidden",
+  } as React.CSSProperties,
+
+  emojiPane: {
+    flex: 1,
+    padding: "16px",
+    overflow: "hidden",
+    boxSizing: "border-box" as const,
+  } as React.CSSProperties,
+
+  namePane: {
+    height: "76px",
+    padding: "10px 16px 8px",
+    borderTop: "1px solid rgba(255, 255, 255, 0.1)",
+    background: "rgba(255, 255, 255, 0.03)",
+    display: "flex",
+    flexDirection: "column" as const,
+    justifyContent: "flex-start",
+    gap: "4px",
+    boxSizing: "border-box" as const,
+    flexShrink: 0,
+  } as React.CSSProperties,
+
+  nameRow: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: "12px",
+  } as React.CSSProperties,
+
+  nameLabel: {
+    fontSize: "12px",
+    color: "rgba(255, 255, 255, 0.6)",
+  } as React.CSSProperties,
+
+  nameValue: {
+    fontSize: "15px",
+    fontWeight: 600,
+    color: "rgba(255, 255, 255, 0.95)",
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap" as const,
+  } as React.CSSProperties,
+
+  nameFieldRow: {
+    display: "flex",
+    alignItems: "center",
+    gap: "12px",
+    width: "100%",
+  } as React.CSSProperties,
+
+  iconButton: {
+    width: "32px",
+    height: "32px",
+    borderRadius: "10px",
+    border: "1px solid rgba(255, 255, 255, 0.15)",
+    background: "rgba(255, 255, 255, 0.05)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    cursor: "pointer",
+    flexShrink: 0,
+  } as React.CSSProperties,
+
+  iconButtonPrimary: {
+    background: "rgba(0, 212, 170, 0.18)",
+    border: "1px solid rgba(0, 212, 170, 0.35)",
+  } as React.CSSProperties,
+
+  iconButtonDanger: {
+    background: "rgba(255, 82, 82, 0.14)",
+    border: "1px solid rgba(255, 82, 82, 0.32)",
+  } as React.CSSProperties,
+
+  rightControls: {
+    display: "flex",
+    gap: "10px",
+    flexShrink: 0,
+  } as React.CSSProperties,
+
+  nameInput: {
+    flex: 1,
+    padding: "10px 12px",
+    borderRadius: "10px",
+    border: "1px solid rgba(255, 255, 255, 0.15)",
+    background: "rgba(0, 0, 0, 0.25)",
+    color: "#ffffff",
+    fontSize: "14px",
+    outline: "none",
+    boxSizing: "border-box" as const,
   } as React.CSSProperties,
 
   loginContent: {
@@ -374,6 +480,9 @@ const Popup = () => {
   const [isLoadingEmojis, setIsLoadingEmojis] = useState(false);
   const [emojiSearch, setEmojiSearch] = useState("");
   const [hoveredEmoji, setHoveredEmoji] = useState<string | null>(null);
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [nameDraft, setNameDraft] = useState("");
+  const [isSavingName, setIsSavingName] = useState(false);
 
   useEffect(() => {
     chrome.runtime.sendMessage(
@@ -386,6 +495,28 @@ const Popup = () => {
       }
     );
   }, []);
+
+  useEffect(() => {
+    if (!authState.isAuthenticated || !authState.token) return;
+    let cancelled = false;
+
+    BackendApiFacade.getCurrentUser(authState.token)
+      .then((user) => {
+        if (cancelled) return;
+        const next: AuthState = { ...authState, user };
+        setAuthState(next);
+        setNameDraft(user.name ?? "");
+        return Storage.setAuthState(next);
+      })
+      .catch((e) => {
+        if (cancelled) return;
+        setError(e instanceof Error ? e.message : "Failed to load user");
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [authState.isAuthenticated, authState.token]);
 
   useEffect(() => {
     if (authState.isAuthenticated && emojis.length === 0) {
@@ -442,9 +573,33 @@ const Popup = () => {
         if (response?.type === MessageType.AuthState) {
           setAuthState(response.payload);
           setEmojis([]);
+          setIsEditingName(false);
+          setNameDraft("");
         }
       }
     );
+  };
+
+  const saveName = async () => {
+    if (!authState.isAuthenticated) return;
+    const nextName = nameDraft.trim();
+    setIsSavingName(true);
+    setError(null);
+    try {
+      const user = await BackendApiFacade.updateMe({ name: nextName });
+      const next: AuthState = {
+        isAuthenticated: true,
+        token: authState.token,
+        user,
+      };
+      setAuthState(next);
+      await Storage.setAuthState(next);
+      setIsEditingName(false);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to update name");
+    } finally {
+      setIsSavingName(false);
+    }
   };
 
   const handleEmojiClick = (emoji: SlackEmojiDto) => {
@@ -501,102 +656,225 @@ const Popup = () => {
 
         <div style={styles.content}>
           {isLoading ? (
-            <div style={styles.loading}>
+            <div style={styles.centeredContent}>
               <div style={styles.spinner} />
               <span style={styles.loadingText}>Loading...</span>
             </div>
           ) : isLoggingIn ? (
-            <div style={styles.loading}>
+            <div style={styles.centeredContent}>
               <div style={styles.spinner} />
               <span style={styles.loadingText}>Connecting to Slack...</span>
             </div>
           ) : authState.isAuthenticated ? (
-            <div style={styles.emojiContent}>
-              <div style={styles.emojiHeader}>
-                <span style={styles.emojiTitle}>Custom Emojis</span>
-                <span style={styles.emojiCount}>
-                  {isLoadingEmojis
-                    ? "Loading..."
-                    : `${filteredEmojis.length} emojis`}
-                </span>
+            <div style={styles.authenticatedLayout}>
+              <div style={styles.emojiPane}>
+                <div style={styles.emojiContent}>
+                  <div style={styles.emojiHeader}>
+                    <span style={styles.emojiTitle}>Custom Emojis</span>
+                    <span style={styles.emojiCount}>
+                      {isLoadingEmojis
+                        ? "Loading..."
+                        : `${filteredEmojis.length} emojis`}
+                    </span>
+                  </div>
+
+                  <input
+                    type="text"
+                    placeholder="Search emojis..."
+                    value={emojiSearch}
+                    onChange={(e) => setEmojiSearch(e.target.value)}
+                    style={styles.emojiSearch}
+                  />
+
+                  {isLoadingEmojis ? (
+                    <div
+                      style={{ ...styles.centeredContent, flex: 1, padding: 0 }}
+                    >
+                      <div style={styles.spinner} />
+                      <span style={styles.loadingText}>Loading emojis...</span>
+                    </div>
+                  ) : (
+                    <div style={styles.emojiGrid}>
+                      {filteredEmojis.map((emoji) => (
+                        <button
+                          key={emoji.name}
+                          style={{
+                            ...styles.emojiItem,
+                            ...(hoveredEmoji === emoji.name
+                              ? styles.emojiItemHover
+                              : {}),
+                          }}
+                          onClick={() => handleEmojiClick(emoji)}
+                          onMouseEnter={() => setHoveredEmoji(emoji.name)}
+                          onMouseLeave={() => setHoveredEmoji(null)}
+                          title={`:${emoji.name}:`}
+                        >
+                          <img
+                            src={emoji.url}
+                            alt={emoji.name}
+                            style={styles.emojiImage}
+                            loading="lazy"
+                          />
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
 
-              <input
-                type="text"
-                placeholder="Search emojis..."
-                value={emojiSearch}
-                onChange={(e) => setEmojiSearch(e.target.value)}
-                style={styles.emojiSearch}
-              />
+              <div style={styles.namePane}>
+                <div style={styles.nameLabel}>Name</div>
+                <div style={styles.nameFieldRow}>
+                  {isEditingName ? (
+                    <input
+                      value={nameDraft}
+                      onChange={(e) => setNameDraft(e.target.value)}
+                      style={styles.nameInput}
+                      disabled={isSavingName}
+                    />
+                  ) : (
+                    <div style={{ ...styles.nameValue, flex: 1 }}>
+                      {authState.user?.name ?? ""}
+                    </div>
+                  )}
 
-              {isLoadingEmojis ? (
-                <div style={{ ...styles.loading, flex: 1 }}>
-                  <div style={styles.spinner} />
-                  <span style={styles.loadingText}>Loading emojis...</span>
+                  <div style={styles.rightControls}>
+                    {isEditingName ? (
+                      <>
+                        <button
+                          type="button"
+                          style={{
+                            ...styles.iconButton,
+                            ...styles.iconButtonPrimary,
+                          }}
+                          onClick={saveName}
+                          disabled={isSavingName}
+                          title="Save"
+                        >
+                          <svg
+                            width="16"
+                            height="16"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            xmlns="http://www.w3.org/2000/svg"
+                          >
+                            <path
+                              d="M20 6L9 17l-5-5"
+                              stroke="rgba(255,255,255,0.9)"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            />
+                          </svg>
+                        </button>
+                        <button
+                          type="button"
+                          style={{
+                            ...styles.iconButton,
+                            ...styles.iconButtonDanger,
+                          }}
+                          onClick={() => {
+                            setIsEditingName(false);
+                            setNameDraft(authState.user?.name ?? "");
+                          }}
+                          disabled={isSavingName}
+                          title="Cancel"
+                        >
+                          <svg
+                            width="16"
+                            height="16"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            xmlns="http://www.w3.org/2000/svg"
+                          >
+                            <path
+                              d="M18 6L6 18"
+                              stroke="rgba(255,255,255,0.9)"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                            />
+                            <path
+                              d="M6 6l12 12"
+                              stroke="rgba(255,255,255,0.9)"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                            />
+                          </svg>
+                        </button>
+                      </>
+                    ) : (
+                      <button
+                        type="button"
+                        style={styles.iconButton}
+                        onClick={() => {
+                          setIsEditingName(true);
+                          setNameDraft(authState.user?.name ?? "");
+                        }}
+                        title="Edit name"
+                      >
+                        <svg
+                          width="16"
+                          height="16"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          xmlns="http://www.w3.org/2000/svg"
+                        >
+                          <path
+                            d="M12 20H21"
+                            stroke="rgba(255,255,255,0.8)"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                          />
+                          <path
+                            d="M16.5 3.5a2.121 2.121 0 0 1 3 3L8 18l-4 1 1-4 11.5-11.5Z"
+                            stroke="rgba(255,255,255,0.8)"
+                            strokeWidth="2"
+                            strokeLinejoin="round"
+                          />
+                        </svg>
+                      </button>
+                    )}
+                  </div>
                 </div>
-              ) : (
-                <div style={styles.emojiGrid}>
-                  {filteredEmojis.map((emoji) => (
-                    <button
-                      key={emoji.name}
-                      style={{
-                        ...styles.emojiItem,
-                        ...(hoveredEmoji === emoji.name
-                          ? styles.emojiItemHover
-                          : {}),
-                      }}
-                      onClick={() => handleEmojiClick(emoji)}
-                      onMouseEnter={() => setHoveredEmoji(emoji.name)}
-                      onMouseLeave={() => setHoveredEmoji(null)}
-                      title={`:${emoji.name}:`}
-                    >
-                      <img
-                        src={emoji.url}
-                        alt={emoji.name}
-                        style={styles.emojiImage}
-                        loading="lazy"
-                      />
-                    </button>
-                  ))}
-                </div>
-              )}
 
-              {error && (
-                <div style={styles.error}>
-                  <span style={{ fontSize: "16px" }}>⚠️</span>
-                  <span style={styles.errorText}>{error}</span>
-                </div>
-              )}
+                {error ? (
+                  <div style={styles.error}>
+                    <span style={styles.errorText}>{error}</span>
+                  </div>
+                ) : null}
+              </div>
             </div>
           ) : (
-            <div style={styles.loginContent}>
-              <div style={styles.slackIcon}>
-                <SlackLogo size={44} />
-              </div>
-              <h2 style={styles.welcomeTitle}>Welcome!</h2>
-              <p style={styles.welcomeText}>
-                Connect your Slack workspace to react with emojis during Google
-                Meet calls.
-              </p>
-              <button
-                style={{
-                  ...styles.slackButton,
-                  ...(buttonHover ? styles.slackButtonHover : {}),
-                }}
-                onClick={handleLogin}
-                onMouseEnter={() => setButtonHover(true)}
-                onMouseLeave={() => setButtonHover(false)}
-              >
-                <SlackLogo size={20} />
-                Sign in with Slack
-              </button>
-
-              {error && (
-                <div style={styles.error}>
-                  <span style={{ fontSize: "16px" }}>⚠️</span>
-                  <span style={styles.errorText}>{error}</span>
+            <div style={styles.centeredContent}>
+              <div style={styles.loginContent}>
+                <div style={styles.slackIcon}>
+                  <SlackLogo size={44} />
                 </div>
-              )}
+                <h2 style={styles.welcomeTitle}>Welcome!</h2>
+                <p style={styles.welcomeText}>
+                  Connect your Slack workspace to react with emojis during
+                  Google Meet calls.
+                </p>
+                <button
+                  style={{
+                    ...styles.slackButton,
+                    ...(buttonHover ? styles.slackButtonHover : {}),
+                  }}
+                  onClick={handleLogin}
+                  onMouseEnter={() => setButtonHover(true)}
+                  onMouseLeave={() => setButtonHover(false)}
+                >
+                  <SlackLogo size={20} />
+                  Sign in with Slack
+                </button>
+
+                {error && (
+                  <div style={styles.error}>
+                    <span style={{ fontSize: "16px" }}>⚠️</span>
+                    <span style={styles.errorText}>{error}</span>
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </div>

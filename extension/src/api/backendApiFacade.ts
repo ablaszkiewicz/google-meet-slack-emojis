@@ -20,6 +20,10 @@ export type BackendUserDto = {
   slackUserId?: string;
 };
 
+export type UpdateMeRequest = {
+  name: string;
+};
+
 export type SlackEmojiDto = {
   name: string;
   url: string;
@@ -66,6 +70,18 @@ export class BackendApiFacade {
     return this.requestJson<SlackEmojiDto[]>("/slack/emojis", {
       method: "GET",
       headers: { Authorization: `Bearer ${authToken}` },
+    });
+  }
+
+  public static async updateMe(payload: UpdateMeRequest): Promise<BackendUserDto> {
+    const authToken = await this.requireToken();
+    return this.requestJson<BackendUserDto>("/users/me", {
+      method: "PATCH",
+      headers: {
+        Authorization: `Bearer ${authToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
     });
   }
 
