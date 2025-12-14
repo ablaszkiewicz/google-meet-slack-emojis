@@ -9,6 +9,9 @@ interface SlackEmoji {
 let emojis: SlackEmoji[] = [];
 let currentPickerMessageId: string | null = null;
 let pickerElement: HTMLElement | null = null;
+let reactionTooltipEl: HTMLElement | null = null;
+let reactionTooltipTimer: number | null = null;
+let reactionTooltipAnchor: HTMLElement | null = null;
 
 function injectStyles() {
   const style = document.createElement("style");
@@ -209,8 +212,105 @@ function injectStyles() {
       color: rgba(250, 250, 250, 0.85);
       font-weight: 500;
     }
+
+    .meet-emoji-tooltip {
+      position: fixed;
+      z-index: 1000000;
+      background: #232529;
+      border: 1px solid rgba(250, 250, 250, 0.12);
+      border-radius: 12px;
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.55);
+      padding: 10px 12px;
+      color: #fafafa;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      pointer-events: none;
+      transform: translate(-50%, -100%);
+      opacity: 0;
+      transition: opacity 0.12s ease;
+    }
+
+    .meet-emoji-tooltip[data-open="true"] {
+      opacity: 1;
+    }
+
+    .meet-emoji-tooltip-emoji {
+      width: 36px;
+      height: 36px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #1b1d21;
+      border: 1px solid rgba(250, 250, 250, 0.12);
+      border-radius: 10px;
+    }
+
+    .meet-emoji-tooltip-emoji img {
+      width: 28px;
+      height: 28px;
+      object-fit: contain;
+    }
+
+    .meet-emoji-tooltip-text {
+      font-size: 12px;
+      color: rgba(250, 250, 250, 0.8);
+      white-space: nowrap;
+    }
   `;
   document.head.appendChild(style);
+}
+
+function ensureReactionTooltip(): HTMLElement {
+  if (reactionTooltipEl) return reactionTooltipEl;
+  const el = document.createElement("div");
+  el.className = "meet-emoji-tooltip";
+  el.setAttribute("data-open", "false");
+  document.body.appendChild(el);
+  reactionTooltipEl = el;
+  return el;
+}
+
+function hideReactionTooltip() {
+  if (reactionTooltipTimer !== null) {
+    window.clearTimeout(reactionTooltipTimer);
+    reactionTooltipTimer = null;
+  }
+  reactionTooltipAnchor = null;
+  if (reactionTooltipEl) {
+    reactionTooltipEl.setAttribute("data-open", "false");
+  }
+}
+
+function showReactionTooltip(anchor: HTMLElement, name: string, url: string) {
+  const el = ensureReactionTooltip();
+  el.innerHTML = `
+    <div class="meet-emoji-tooltip-emoji">
+      <img src="${url}" alt="${name}" />
+    </div>
+    <div class="meet-emoji-tooltip-text">You reacted with :${name}:</div>
+  `;
+
+  const rect = anchor.getBoundingClientRect();
+  const left = rect.left + rect.width / 2;
+  const top = rect.top - 10;
+  el.style.left = `${left}px`;
+  el.style.top = `${top}px`;
+  el.setAttribute("data-open", "true");
+}
+
+function scheduleReactionTooltip(
+  anchor: HTMLElement,
+  name: string,
+  url: string
+) {
+  hideReactionTooltip();
+  reactionTooltipAnchor = anchor;
+  reactionTooltipTimer = window.setTimeout(() => {
+    if (reactionTooltipAnchor !== anchor) return;
+    showReactionTooltip(anchor, name, url);
+  }, 500);
 }
 
 async function loadEmojis(): Promise<void> {
@@ -427,6 +527,12 @@ function updateReactionsUI(messageId: string) {
       <img src="${url}" alt="${name}" />
       <span class="meet-emoji-reaction-count">${count}</span>
     `;
+    reactionEl.addEventListener("mouseenter", () => {
+      scheduleReactionTooltip(reactionEl, name, url);
+    });
+    reactionEl.addEventListener("mouseleave", () => {
+      hideReactionTooltip();
+    });
 
     if (addBtn) {
       emojiBar.insertBefore(reactionEl, addBtn);
