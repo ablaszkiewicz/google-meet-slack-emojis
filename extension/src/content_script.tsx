@@ -1,4 +1,4 @@
-import { MessageType } from "./slack/types";
+import { Message, MessageType } from "./slack/types";
 console.log("[MeetEmoji] Content script loaded on Google Meet");
 
 interface SlackEmoji {
@@ -12,6 +12,7 @@ let pickerElement: HTMLElement | null = null;
 let reactionTooltipEl: HTMLElement | null = null;
 let reactionTooltipTimer: number | null = null;
 let reactionTooltipAnchor: HTMLElement | null = null;
+let meetingId: string | null = null;
 
 function injectStyles() {
   const style = document.createElement("style");
@@ -344,6 +345,32 @@ async function loadEmojis(): Promise<void> {
   });
 }
 
+function getMeetingIdFromUrl(): string | null {
+  const path = window.location.pathname.replace("/", "").trim();
+  if (!path) return null;
+  if (path.includes("/")) return null;
+  return path;
+}
+
+function subscribeMeetingEvents(meetingId: string) {
+  chrome.runtime.sendMessage(
+    { type: MessageType.SubscribeMeetingEvents, payload: { meetingId } },
+    () => undefined
+  );
+}
+
+function postReaction(input: {
+  meetingId: string;
+  messageId: string;
+  emojiName: string;
+  emojiUrl: string;
+}) {
+  chrome.runtime.sendMessage(
+    { type: MessageType.PostMeetingReaction, payload: input },
+    () => undefined
+  );
+}
+
 function createReactionButtonSvg(): string {
   return `<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
     <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-4-8c.79 0 1.5-.71 1.5-1.5S8.79 9 8 9s-1.5.71-1.5 1.5S7.21 12 8 12zm8 0c.79 0 1.5-.71 1.5-1.5S16.79 9 16 9s-1.5.71-1.5 1.5.71 1.5 1.5 1.5zm-4 5.5c2.33 0 4.31-1.46 5.11-3.5H6.89c.8 2.04 2.78 3.5 5.11 3.5z"/>
@@ -415,7 +442,16 @@ function renderEmojisInPicker(picker: HTMLElement, searchTerm: string = "") {
       const emojiName = item.getAttribute("data-emoji-name");
       const emojiUrl = item.getAttribute("data-emoji-url");
       if (emojiName && emojiUrl && currentPickerMessageId) {
-        addReactionToMessage(currentPickerMessageId, emojiName, emojiUrl);
+        if (meetingId) {
+          postReaction({
+            meetingId,
+            messageId: currentPickerMessageId,
+            emojiName,
+            emojiUrl,
+          });
+        } else {
+          console.log("[MeetEmoji] No meetingId, cannot broadcast reaction");
+        }
         closePicker();
       }
     });
@@ -600,11 +636,18 @@ async function init() {
     return;
   }
 
+  meetingId = getMeetingIdFromUrl();
+
   console.log("[MeetEmoji] Initializing on Google Meet");
 
   injectStyles();
 
   await loadEmojis();
+
+  if (meetingId) {
+    console.log("[MeetEmoji] Subscribing meeting events", { meetingId });
+    subscribeMeetingEvents(meetingId);
+  }
 
   processExistingMessages();
   watchForMessages();
@@ -620,5 +663,34 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
   if (areaName === "sync" && changes["backend_jwt"]) {
     console.log("[MeetEmoji] Auth changed, reloading emojis");
     loadEmojis();
+    if (meetingId) {
+      console.log("[MeetEmoji] Resubscribing meeting events", { meetingId });
+      subscribeMeetingEvents(meetingId);
+    }
   }
+});
+
+chrome.runtime.onMessage.addListener((message: Message) => {
+  if (message.type !== MessageType.MeetingReactionEvent) return;
+  if (!meetingId) return;
+  if (message.payload.meetingId !== meetingId) return;
+  console.log("[MeetEmoji] Meeting reaction event", {
+    meetingId: message.payload.meetingId,
+    messageId: message.payload.messageId,
+    emojiName: message.payload.emojiName,
+    userId: message.payload.user?.id,
+  });
+  addReactionToMessage(
+    message.payload.messageId,
+    message.payload.emojiName,
+    message.payload.emojiUrl
+  );
+});
+
+window.addEventListener("beforeunload", () => {
+  if (!meetingId) return;
+  chrome.runtime.sendMessage({
+    type: MessageType.UnsubscribeMeetingEvents,
+    payload: { meetingId },
+  });
 });

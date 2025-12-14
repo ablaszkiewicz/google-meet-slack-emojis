@@ -16,6 +16,10 @@ export enum MessageType {
   GetEmojis = "get-emojis",
   EmojisSuccess = "emojis-success",
   EmojisError = "emojis-error",
+  SubscribeMeetingEvents = "subscribe-meeting-events",
+  UnsubscribeMeetingEvents = "unsubscribe-meeting-events",
+  PostMeetingReaction = "post-meeting-reaction",
+  MeetingReactionEvent = "meeting-reaction-event",
 }
 
 export type Message =
@@ -27,4 +31,28 @@ export type Message =
   | { type: MessageType.SlackAuthError; payload: string }
   | { type: MessageType.AuthState; payload: AuthState }
   | { type: MessageType.EmojisSuccess; payload: SlackEmojiDto[] }
-  | { type: MessageType.EmojisError; payload: string };
+  | { type: MessageType.EmojisError; payload: string }
+  | { type: MessageType.SubscribeMeetingEvents; payload: { meetingId: string } }
+  | {
+      type: MessageType.UnsubscribeMeetingEvents;
+      payload: { meetingId: string };
+    }
+  | {
+      type: MessageType.PostMeetingReaction;
+      payload: {
+        meetingId: string;
+        messageId: string;
+        emojiName: string;
+        emojiUrl: string;
+      };
+    }
+  | {
+      type: MessageType.MeetingReactionEvent;
+      payload: {
+        meetingId: string;
+        messageId: string;
+        emojiName: string;
+        emojiUrl: string;
+        user: { id: string; name?: string };
+      };
+    };
