@@ -11,6 +11,7 @@ type MeetingStreamState = {
   tabIds: Set<number>;
   abort: AbortController;
   running: boolean;
+  reconnectAttempt: number;
 };
 
 const meetingStreams = new Map<string, MeetingStreamState>();
@@ -187,6 +188,7 @@ async function handleSubscribeMeetingEvents(
     tabIds: new Set([tabId]),
     abort,
     running: false,
+    reconnectAttempt: 0,
   };
   meetingStreams.set(meetingId, state);
   console.log("[Background] Starting meeting stream", { meetingId, tabId });
@@ -291,7 +293,10 @@ async function startMeetingStream(state: MeetingStreamState): Promise<void> {
   }
 
   const url = `${BACKEND_CONFIG.BASE_URL}/slack/meetings/${state.meetingId}/events`;
-  console.log("[Background] SSE connect", { meetingId: state.meetingId });
+  console.log("[Background] SSE connect", {
+    meetingId: state.meetingId,
+    reconnectAttempt: state.reconnectAttempt,
+  });
   const response = await fetch(url, {
     method: "GET",
     headers: { Authorization: `Bearer ${auth.token}` },
@@ -303,58 +308,85 @@ async function startMeetingStream(state: MeetingStreamState): Promise<void> {
       status: response.status,
     });
     state.running = false;
+    scheduleReconnect(state);
     return;
   }
 
   console.log("[Background] SSE connected", { meetingId: state.meetingId });
+  state.reconnectAttempt = 0;
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
   let buffer = "";
 
-  while (true) {
-    const { value, done } = await reader.read();
-    if (done) break;
-    buffer += decoder.decode(value, { stream: true });
-    let idx: number;
-    while ((idx = buffer.indexOf("\n\n")) !== -1) {
-      const chunk = buffer.slice(0, idx);
-      buffer = buffer.slice(idx + 2);
-      const lines = chunk.split("\n");
-      const dataLines = lines
-        .filter((l) => l.startsWith("data:"))
-        .map((l) => l.slice(5).trim());
-      if (dataLines.length === 0) continue;
-      const dataStr = dataLines.join("\n");
-      try {
-        const event = JSON.parse(dataStr) as {
-          action: "add" | "remove";
-          meetingId: string;
-          messageId: string;
-          emojiName: string;
-          emojiUrl: string;
-          user: { id: string; name?: string };
-        };
-        console.log("[Background] SSE event", {
-          meetingId: event.meetingId,
-          messageId: event.messageId,
-          emojiName: event.emojiName,
-          action: event.action,
-          userId: event.user?.id,
-        });
-        for (const tabId of Array.from(state.tabIds.values())) {
-          chrome.tabs.sendMessage(tabId, {
-            type: MessageType.MeetingReactionEvent,
-            payload: event,
-          } as Message);
+  try {
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      let idx: number;
+      while ((idx = buffer.indexOf("\n\n")) !== -1) {
+        const chunk = buffer.slice(0, idx);
+        buffer = buffer.slice(idx + 2);
+        const lines = chunk.split("\n");
+        const dataLines = lines
+          .filter((l) => l.startsWith("data:"))
+          .map((l) => l.slice(5).trim());
+        if (dataLines.length === 0) continue;
+        const dataStr = dataLines.join("\n");
+        try {
+          const event = JSON.parse(dataStr) as {
+            action: "add" | "remove";
+            meetingId: string;
+            messageId: string;
+            emojiName: string;
+            emojiUrl: string;
+            user: { id: string; name?: string };
+          };
+          console.log("[Background] SSE event", {
+            meetingId: event.meetingId,
+            messageId: event.messageId,
+            emojiName: event.emojiName,
+            action: event.action,
+            userId: event.user?.id,
+          });
+          for (const tabId of Array.from(state.tabIds.values())) {
+            chrome.tabs.sendMessage(tabId, {
+              type: MessageType.MeetingReactionEvent,
+              payload: event,
+            } as Message);
+          }
+        } catch (e) {
+          continue;
         }
-      } catch (e) {
-        continue;
       }
     }
+  } catch (e) {
+    console.log("[Background] SSE read error", { meetingId: state.meetingId });
   }
 
   state.running = false;
   console.log("[Background] SSE disconnected", { meetingId: state.meetingId });
+  scheduleReconnect(state);
+}
+
+function scheduleReconnect(state: MeetingStreamState) {
+  if (state.abort.signal.aborted) return;
+  if (state.tabIds.size === 0) return;
+  const attempt = Math.min(8, state.reconnectAttempt + 1);
+  state.reconnectAttempt = attempt;
+  const delayMs = Math.min(30000, 750 * Math.pow(2, attempt));
+  console.log("[Background] SSE reconnect scheduled", {
+    meetingId: state.meetingId,
+    attempt,
+    delayMs,
+  });
+  setTimeout(() => {
+    const current = meetingStreams.get(state.meetingId);
+    if (!current) return;
+    if (current.abort.signal.aborted) return;
+    if (current.tabIds.size === 0) return;
+    startMeetingStream(current).catch(() => undefined);
+  }, delayMs);
 }
 
 console.log("[Background] Message listener registered");

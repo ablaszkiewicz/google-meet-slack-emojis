@@ -14,6 +14,7 @@ let reactionTooltipTimer: number | null = null;
 let reactionTooltipAnchor: HTMLElement | null = null;
 let meetingId: string | null = null;
 let currentUserId: string | null = null;
+let meetingResubscribeTimer: number | null = null;
 
 function injectStyles() {
   const style = document.createElement("style");
@@ -741,6 +742,13 @@ async function init() {
   if (meetingId) {
     console.log("[MeetEmoji] Subscribing meeting events", { meetingId });
     subscribeMeetingEvents(meetingId);
+    if (meetingResubscribeTimer) {
+      window.clearInterval(meetingResubscribeTimer);
+    }
+    meetingResubscribeTimer = window.setInterval(() => {
+      if (!meetingId) return;
+      subscribeMeetingEvents(meetingId);
+    }, 15000);
   }
 
   processExistingMessages();
@@ -763,6 +771,13 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
       subscribeMeetingEvents(meetingId);
     }
   }
+});
+
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState !== "visible") return;
+  if (!meetingId) return;
+  console.log("[MeetEmoji] Tab visible, resubscribing meeting events", { meetingId });
+  subscribeMeetingEvents(meetingId);
 });
 
 chrome.runtime.onMessage.addListener((message: Message) => {
@@ -789,6 +804,10 @@ chrome.runtime.onMessage.addListener((message: Message) => {
 
 window.addEventListener("beforeunload", () => {
   if (!meetingId) return;
+  if (meetingResubscribeTimer) {
+    window.clearInterval(meetingResubscribeTimer);
+    meetingResubscribeTimer = null;
+  }
   chrome.runtime.sendMessage({
     type: MessageType.UnsubscribeMeetingEvents,
     payload: { meetingId },
