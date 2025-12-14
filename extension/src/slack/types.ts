@@ -19,6 +19,7 @@ export enum MessageType {
   SubscribeMeetingEvents = "subscribe-meeting-events",
   UnsubscribeMeetingEvents = "unsubscribe-meeting-events",
   PostMeetingReaction = "post-meeting-reaction",
+  DeleteMeetingReaction = "delete-meeting-reaction",
   MeetingReactionEvent = "meeting-reaction-event",
 }
 
@@ -47,8 +48,18 @@ export type Message =
       };
     }
   | {
+      type: MessageType.DeleteMeetingReaction;
+      payload: {
+        meetingId: string;
+        messageId: string;
+        emojiName: string;
+        emojiUrl: string;
+      };
+    }
+  | {
       type: MessageType.MeetingReactionEvent;
       payload: {
+        action: "add" | "remove";
         meetingId: string;
         messageId: string;
         emojiName: string;

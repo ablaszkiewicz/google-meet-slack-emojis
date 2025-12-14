@@ -52,6 +52,10 @@ chrome.runtime.onMessage.addListener(
         handlePostMeetingReaction(message, sender, sendResponse);
         return true;
 
+      case MessageType.DeleteMeetingReaction:
+        handleDeleteMeetingReaction(message, sender, sendResponse);
+        return true;
+
       default:
         return false;
     }
@@ -248,6 +252,35 @@ async function handlePostMeetingReaction(
   sendResponse({ type: MessageType.AuthState, payload: state });
 }
 
+async function handleDeleteMeetingReaction(
+  message: Extract<Message, { type: MessageType.DeleteMeetingReaction }>,
+  sender: chrome.runtime.MessageSender,
+  sendResponse: (response: Message) => void
+) {
+  void sender;
+  const state = await Storage.getAuthState();
+  if (!state.token) {
+    sendResponse({ type: MessageType.EmojisError, payload: "Not authenticated" });
+    return;
+  }
+  const { meetingId, messageId, emojiName, emojiUrl } = message.payload;
+  const url = `${BACKEND_CONFIG.BASE_URL}/slack/meetings/${meetingId}/reactions`;
+  console.log("[Background] DELETE reaction", { meetingId, messageId, emojiName });
+  const response = await fetch(url, {
+    method: "DELETE",
+    headers: {
+      Authorization: `Bearer ${state.token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ messageId, emojiName, emojiUrl }),
+  });
+  console.log("[Background] DELETE reaction response", {
+    ok: response.ok,
+    status: response.status,
+  });
+  sendResponse({ type: MessageType.AuthState, payload: state });
+}
+
 async function startMeetingStream(state: MeetingStreamState): Promise<void> {
   if (state.running) return;
   state.running = true;
@@ -294,6 +327,7 @@ async function startMeetingStream(state: MeetingStreamState): Promise<void> {
       const dataStr = dataLines.join("\n");
       try {
         const event = JSON.parse(dataStr) as {
+          action: "add" | "remove";
           meetingId: string;
           messageId: string;
           emojiName: string;
@@ -304,6 +338,7 @@ async function startMeetingStream(state: MeetingStreamState): Promise<void> {
           meetingId: event.meetingId,
           messageId: event.messageId,
           emojiName: event.emojiName,
+          action: event.action,
           userId: event.user?.id,
         });
         for (const tabId of Array.from(state.tabIds.values())) {

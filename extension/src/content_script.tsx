@@ -13,6 +13,7 @@ let reactionTooltipEl: HTMLElement | null = null;
 let reactionTooltipTimer: number | null = null;
 let reactionTooltipAnchor: HTMLElement | null = null;
 let meetingId: string | null = null;
+let currentUserId: string | null = null;
 
 function injectStyles() {
   const style = document.createElement("style");
@@ -193,13 +194,27 @@ function injectStyles() {
       background: rgba(250, 250, 250, 0.08);
       border-radius: 12px;
       border: 1px solid transparent;
-      cursor: default;
+      cursor: pointer;
       transition: all 0.2s ease;
+      appearance: none;
+      outline: none;
+      color: inherit;
     }
 
     .meet-emoji-reaction:hover {
       background: rgba(250, 250, 250, 0.12);
       border-color: rgba(250, 250, 250, 0.18);
+    }
+
+    .meet-emoji-reaction--mine {
+      background: rgba(250, 250, 250, 0.16);
+      border-color: rgba(250, 250, 250, 0.42);
+      border-width: 2px;
+    }
+
+    .meet-emoji-reaction--mine:hover {
+      background: rgba(250, 250, 250, 0.2);
+      border-color: rgba(250, 250, 250, 0.55);
     }
 
     .meet-emoji-reaction img {
@@ -371,6 +386,26 @@ function postReaction(input: {
   );
 }
 
+function deleteReaction(input: {
+  meetingId: string;
+  messageId: string;
+  emojiName: string;
+  emojiUrl: string;
+}) {
+  chrome.runtime.sendMessage(
+    { type: MessageType.DeleteMeetingReaction, payload: input },
+    () => undefined
+  );
+}
+
+function refreshCurrentUserId() {
+  chrome.runtime.sendMessage({ type: MessageType.GetAuthState }, (response) => {
+    if (!response) return;
+    if (response.type !== MessageType.AuthState) return;
+    currentUserId = response.payload.user?.id ?? null;
+  });
+}
+
 function createReactionButtonSvg(): string {
   return `<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
     <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-4-8c.79 0 1.5-.71 1.5-1.5S8.79 9 8 9s-1.5.71-1.5 1.5S7.21 12 8 12zm8 0c.79 0 1.5-.71 1.5-1.5S16.79 9 16 9s-1.5.71-1.5 1.5.71 1.5 1.5 1.5zm-4 5.5c2.33 0 4.31-1.46 5.11-3.5H6.89c.8 2.04 2.78 3.5 5.11 3.5z"/>
@@ -443,12 +478,28 @@ function renderEmojisInPicker(picker: HTMLElement, searchTerm: string = "") {
       const emojiUrl = item.getAttribute("data-emoji-url");
       if (emojiName && emojiUrl && currentPickerMessageId) {
         if (meetingId) {
-          postReaction({
-            meetingId,
-            messageId: currentPickerMessageId,
-            emojiName,
-            emojiUrl,
-          });
+          const existing = messageReactions
+            .get(currentPickerMessageId)
+            ?.get(emojiName);
+          const hasMine =
+            !!currentUserId &&
+            !!existing &&
+            existing.userIds.has(currentUserId);
+          if (hasMine) {
+            deleteReaction({
+              meetingId,
+              messageId: currentPickerMessageId,
+              emojiName,
+              emojiUrl,
+            });
+          } else {
+            postReaction({
+              meetingId,
+              messageId: currentPickerMessageId,
+              emojiName,
+              emojiUrl,
+            });
+          }
         } else {
           console.log("[MeetEmoji] No meetingId, cannot broadcast reaction");
         }
@@ -511,32 +562,49 @@ function handleOutsideClick(e: MouseEvent) {
 
 const messageReactions = new Map<
   string,
-  Map<string, { url: string; count: number }>
+  Map<string, { url: string; userIds: Set<string> }>
 >();
 
-function addReactionToMessage(
-  messageId: string,
-  emojiName: string,
-  emojiUrl: string
-) {
-  console.log(
-    `[MeetEmoji] Adding reaction :${emojiName}: to message ${messageId}`
-  );
-
-  if (!messageReactions.has(messageId)) {
-    messageReactions.set(messageId, new Map());
+function applyReactionEvent(input: {
+  messageId: string;
+  emojiName: string;
+  emojiUrl: string;
+  userId: string;
+  action: "add" | "remove";
+}) {
+  if (!messageReactions.has(input.messageId)) {
+    messageReactions.set(input.messageId, new Map());
   }
 
-  const reactions = messageReactions.get(messageId)!;
+  const reactions = messageReactions.get(input.messageId)!;
+  const existing = reactions.get(input.emojiName);
 
-  if (reactions.has(emojiName)) {
-    const reaction = reactions.get(emojiName)!;
-    reaction.count++;
+  if (input.action === "add") {
+    if (!existing) {
+      reactions.set(input.emojiName, {
+        url: input.emojiUrl,
+        userIds: new Set([input.userId]),
+      });
+    } else {
+      existing.userIds.add(input.userId);
+      if (input.emojiUrl) {
+        existing.url = input.emojiUrl;
+      }
+    }
   } else {
-    reactions.set(emojiName, { url: emojiUrl, count: 1 });
+    if (existing) {
+      existing.userIds.delete(input.userId);
+      if (existing.userIds.size === 0) {
+        reactions.delete(input.emojiName);
+      }
+    }
   }
 
-  updateReactionsUI(messageId);
+  if (reactions.size === 0) {
+    messageReactions.delete(input.messageId);
+  }
+
+  updateReactionsUI(input.messageId);
 }
 
 function updateReactionsUI(messageId: string) {
@@ -555,9 +623,14 @@ function updateReactionsUI(messageId: string) {
 
   const addBtn = emojiBar.querySelector(".meet-emoji-add-btn");
 
-  Array.from(reactions.entries()).forEach(([name, { url, count }]) => {
-    const reactionEl = document.createElement("div");
+  Array.from(reactions.entries()).forEach(([name, { url, userIds }]) => {
+    const count = userIds.size;
+    const isMine = !!currentUserId && userIds.has(currentUserId);
+    const reactionEl = document.createElement("button");
     reactionEl.className = "meet-emoji-reaction";
+    if (isMine) {
+      reactionEl.classList.add("meet-emoji-reaction--mine");
+    }
     reactionEl.title = `:${name}:`;
     reactionEl.innerHTML = `
       <img src="${url}" alt="${name}" />
@@ -568,6 +641,26 @@ function updateReactionsUI(messageId: string) {
     });
     reactionEl.addEventListener("mouseleave", () => {
       hideReactionTooltip();
+    });
+    reactionEl.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (!meetingId) return;
+      if (isMine) {
+        deleteReaction({
+          meetingId,
+          messageId,
+          emojiName: name,
+          emojiUrl: url,
+        });
+      } else {
+        postReaction({
+          meetingId,
+          messageId,
+          emojiName: name,
+          emojiUrl: url,
+        });
+      }
     });
 
     if (addBtn) {
@@ -637,6 +730,7 @@ async function init() {
   }
 
   meetingId = getMeetingIdFromUrl();
+  refreshCurrentUserId();
 
   console.log("[MeetEmoji] Initializing on Google Meet");
 
@@ -663,6 +757,7 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
   if (areaName === "sync" && changes["backend_jwt"]) {
     console.log("[MeetEmoji] Auth changed, reloading emojis");
     loadEmojis();
+    refreshCurrentUserId();
     if (meetingId) {
       console.log("[MeetEmoji] Resubscribing meeting events", { meetingId });
       subscribeMeetingEvents(meetingId);
@@ -678,13 +773,18 @@ chrome.runtime.onMessage.addListener((message: Message) => {
     meetingId: message.payload.meetingId,
     messageId: message.payload.messageId,
     emojiName: message.payload.emojiName,
+    action: message.payload.action,
     userId: message.payload.user?.id,
   });
-  addReactionToMessage(
-    message.payload.messageId,
-    message.payload.emojiName,
-    message.payload.emojiUrl
-  );
+  const userId = message.payload.user?.id;
+  if (!userId) return;
+  applyReactionEvent({
+    messageId: message.payload.messageId,
+    emojiName: message.payload.emojiName,
+    emojiUrl: message.payload.emojiUrl,
+    userId,
+    action: message.payload.action,
+  });
 });
 
 window.addEventListener("beforeunload", () => {

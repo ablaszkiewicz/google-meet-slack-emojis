@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Logger,
   NotFoundException,
@@ -15,6 +16,7 @@ import { SlackService } from "./slack.service";
 import { SlackRealtimeService } from "./slack-realtime.service";
 import { map, Observable } from "rxjs";
 import {
+  DeleteMeetingReactionRequest,
   MeetingReactionEvent,
   PostMeetingReactionRequest,
 } from "./dto/meeting-reaction.dto";
@@ -59,6 +61,33 @@ export class SlackController {
     }
 
     const event: MeetingReactionEvent = {
+      action: "add",
+      meetingId,
+      messageId: payload.messageId,
+      emojiName: payload.emojiName,
+      emojiUrl: payload.emojiUrl,
+      user,
+    };
+
+    this.realtime.emit(meetingId, event);
+  }
+
+  @Delete("meetings/:meetingId/reactions")
+  public async deleteReaction(
+    @Param("meetingId") meetingId: string,
+    @CurrentUserId() userId: string,
+    @Body() payload: DeleteMeetingReactionRequest
+  ): Promise<void> {
+    this.logger.log(
+      `DELETE reaction meetingId=${meetingId} userId=${userId} messageId=${payload.messageId} emoji=${payload.emojiName}`
+    );
+    const user = await this.userReadService.readById(userId);
+    if (!user) {
+      throw new NotFoundException();
+    }
+
+    const event: MeetingReactionEvent = {
+      action: "remove",
       meetingId,
       messageId: payload.messageId,
       emojiName: payload.emojiName,
